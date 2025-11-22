@@ -13,6 +13,7 @@ namespace BorsaAPI.Models
         public decimal MacdLine { get; set; }
         public decimal MacdSignal { get; set; }
         public decimal MacdHist { get; set; }
+        public decimal BuyumeOrani { get; set; }
         public DateTime SonGuncelleme { get; set; }
     }
 }

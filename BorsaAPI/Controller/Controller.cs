@@ -21,11 +21,16 @@ namespace BorsaAPI.Controllers
             [FromQuery] decimal? minFk, 
             [FromQuery] decimal? maxPdDd, 
             [FromQuery] decimal? minPdDd,
-            [FromQuery] decimal? minRsi,
             [FromQuery] decimal? maxRsi,
-            [FromQuery] decimal? minMacdLine, [FromQuery] decimal? maxMacdLine,     
-            [FromQuery] decimal? minMacdSignal, [FromQuery] decimal? maxMacdSignal, 
-            [FromQuery] decimal? minMacdHist, [FromQuery] decimal? maxMacdHist  
+            [FromQuery] decimal? minRsi,
+            [FromQuery] decimal? maxMacdLine,
+            [FromQuery] decimal? minMacdLine, 
+            [FromQuery] decimal? maxMacdSignal,      
+            [FromQuery] decimal? minMacdSignal, 
+            [FromQuery] decimal? maxMacdHist,
+            [FromQuery] decimal? minMacdHist,
+            [FromQuery] decimal? maxBuyumeOrani,
+            [FromQuery] decimal? minBuyumeOrani
             )
         {
             try
@@ -34,9 +39,10 @@ namespace BorsaAPI.Controllers
                 var veriler = _hisseRepository.TumHisseleriGetir(maxFk, minFk, 
                                                                  maxPdDd, minPdDd,
                                                                  maxRsi,minRsi,
-                                                                 minMacdLine, maxMacdLine,
-                                                                 minMacdSignal, maxMacdSignal,
-                                                                 minMacdHist, maxMacdHist);
+                                                                 maxMacdLine, minMacdLine,
+                                                                 maxMacdSignal, minMacdSignal,
+                                                                 maxMacdHist, minMacdHist,
+                                                                 maxBuyumeOrani,minBuyumeOrani);
                 return Ok(veriler);
             }
             catch (Exception ex)

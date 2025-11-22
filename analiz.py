@@ -28,6 +28,42 @@ def macd_hesapla(df):
     
     return macd_line, macd_signal, macd_hist
 #------------------------#
+#----------BÜYÜME ANALİZİ (YENİ)-----------#
+def buyume_orani_hesapla(hisse):
+    """
+    Şirketin yıllık net kar büyümesini hesaplar.
+    Formül: (Bu Sene - Geçen Sene) / Geçen Sene * 100
+    """
+    try:
+        
+        gelir_tablosu = hisse.income_stmt
+        
+        
+        if gelir_tablosu.empty or 'Net Income' not in gelir_tablosu.index:
+            return 0
+
+       
+        net_kar_serisi = gelir_tablosu.loc['Net Income']
+        
+       
+        if len(net_kar_serisi) < 2:
+            return 0
+
+        bu_sene = net_kar_serisi.iloc[0]    
+        gecen_sene = net_kar_serisi.iloc[1] 
+
+        
+        if gecen_sene == 0:
+            return 0
+
+      
+        buyume = ((bu_sene - gecen_sene) / abs(gecen_sene)) * 100
+        return buyume
+
+    except Exception as e:
+        print(f"⚠️ Büyüme hesabı hatası: {e}")
+        return 0
+    #-----------------------------------------#
 def veri_cek_ve_hesapla(sembol):
     try:
         hisse = yf.Ticker(sembol)
@@ -51,7 +87,9 @@ def veri_cek_ve_hesapla(sembol):
         macd_line = macd_l.iloc[-1]
         macd_signal = macd_s.iloc[-1]
         macd_hist = macd_h.iloc[-1]
-
+        #----------#
+        buyume_orani = buyume_orani_hesapla(hisse)
+        #----------#
         bilgi = hisse.info
         fk_orani = bilgi.get('trailingPE', 0)
         pd_dd = bilgi.get('priceToBook', 0)
@@ -65,7 +103,7 @@ def veri_cek_ve_hesapla(sembol):
         if pd.isna(macd_line): macd_line = 0
         if pd.isna(macd_signal): macd_signal = 0
         if pd.isna(macd_hist): macd_hist = 0
-
+        if pd.isna(buyume_orani): buyume_orani = 0
         # Dönüşe rsi_degeri eklendi (6. eleman)
         return (
             float(guncel_fiyat), 
@@ -76,7 +114,8 @@ def veri_cek_ve_hesapla(sembol):
             float(rsi_degeri),
             float(macd_line), 
             float(macd_signal), 
-            float(macd_hist)
+            float(macd_hist),
+            float(buyume_orani)
         )
 
     except Exception as e:

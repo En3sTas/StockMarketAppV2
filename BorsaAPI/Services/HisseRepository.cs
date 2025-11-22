@@ -18,7 +18,8 @@ namespace BorsaAPI.Services
                                              decimal? maxRsi, decimal? minRsi,
                                              decimal? maxMacdLine, decimal? minMacdLine,
                                              decimal? maxMacdSignal, decimal? minMacdSignal,
-                                             decimal? maxMacdHist, decimal? minMacdHist)
+                                             decimal? maxMacdHist, decimal? minMacdHist,
+                                             decimal? maxBuyumeOrani, decimal? minBuyumeOrani)
         {
             List<Hisse> hisseListesi = new List<Hisse>();
 
@@ -51,6 +52,8 @@ namespace BorsaAPI.Services
                             hisse.MacdLine = reader.IsDBNull(reader.GetOrdinal("macd_line")) ? 0 : reader.GetDecimal(reader.GetOrdinal("macd_line"));
                             hisse.MacdSignal = reader.IsDBNull(reader.GetOrdinal("macd_signal")) ? 0 : reader.GetDecimal(reader.GetOrdinal("macd_signal"));
                             hisse.MacdHist = reader.IsDBNull(reader.GetOrdinal("macd_hist")) ? 0 : reader.GetDecimal(reader.GetOrdinal("macd_hist"));
+                            
+                            hisse.BuyumeOrani = reader.IsDBNull(reader.GetOrdinal("buyume_orani")) ? 0 : reader.GetDecimal(reader.GetOrdinal("buyume_orani"));
 
                             hisse.SonGuncelleme = reader.GetDateTime(reader.GetOrdinal("son_guncelleme"));
 
@@ -110,7 +113,16 @@ namespace BorsaAPI.Services
             {
                 hisseListesi= hisseListesi.Where(h=> h.MacdHist <= maxMacdHist.Value).ToList();
             }   
-            
+            //Büyüme Oranı
+            if (minBuyumeOrani.HasValue)
+            {
+                hisseListesi= hisseListesi.Where(h=> h.BuyumeOrani >= minBuyumeOrani.Value).ToList();
+            }
+            if (maxBuyumeOrani.HasValue)
+            {
+                hisseListesi= hisseListesi.Where(h=> h.BuyumeOrani <= maxBuyumeOrani.Value).ToList();
+            }
+
             return hisseListesi;
 
         
