@@ -5,6 +5,15 @@ using Microsoft.OpenApi.Models; // Bu kütüphane şart!
 var builder = WebApplication.CreateBuilder(args);
 
 // --- 1. SERVİSLER ---
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("HerkesGelsinPolitikasi", policy =>
+    {
+        policy.AllowAnyOrigin()  // Hangi siteden gelirse gelsin (localhost, google.com vb.)
+              .AllowAnyMethod()  // GET, POST, PUT, DELETE hepsi serbest
+              .AllowAnyHeader(); // Tüm başlıklara izin ver
+    });
+});
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 
@@ -19,6 +28,17 @@ builder.Services.AddScoped<IHisseRepository, HisseRepository>(); // Service sın
 var app = builder.Build();
 
 // --- 2. UYGULAMA AYARLARI ---
+app.UseCors("HerkesGelsinPolitikasi");
+
+if (app.Environment.IsDevelopment())
+{
+    app.UseSwagger();
+    app.UseSwaggerUI(c => 
+    {
+        c.SwaggerEndpoint("/swagger/v1/swagger.json", "BorsaAPI v1");
+    });
+}
+
 if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
@@ -32,6 +52,7 @@ if (app.Environment.IsDevelopment())
 
 app.UseHttpsRedirection();
 app.UseAuthorization();
+app.UseCors("HerkesGelsinPolitikasi");
 app.MapControllers();
 
 app.Run();
