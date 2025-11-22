@@ -31,37 +31,43 @@ def macd_hesapla(df):
 #----------BÜYÜME ANALİZİ (YENİ)-----------#
 def buyume_orani_hesapla(hisse):
     """
-    Şirketin yıllık net kar büyümesini hesaplar.
-    Formül: (Bu Sene - Geçen Sene) / Geçen Sene * 100
+    Önce ÇEYREKLİK (Quarterly) büyümeye bakar (Son Çeyrek vs Geçen Sene Aynı Çeyrek).
+    Veri yoksa YILLIK (Annual) büyümeye döner.
     """
     try:
+        # --- PLAN A: ÇEYREKLİK (Son Çeyrek vs 1 Yıl Önceki Çeyrek) ---
+        ceyrek_tablo = hisse.quarterly_income_stmt
         
-        gelir_tablosu = hisse.income_stmt
-        
-        
-        if gelir_tablosu.empty or 'Net Income' not in gelir_tablosu.index:
-            return 0
+        if not ceyrek_tablo.empty and 'Net Income' in ceyrek_tablo.index:
+            net_kar_serisi = ceyrek_tablo.loc['Net Income']
+            
+            # Bize en az 5 veri lazım ki (0. indeks) ile (4. indeks yani geçen sene aynı çeyrek) kıyaslayalım
+            # yfinance bazen 4 veri döner, o zaman kıyaslayamayız.
+            if len(net_kar_serisi) >= 5:
+                bu_ceyrek = net_kar_serisi.iloc[0]      # En son açıklanan (Örn: 2025 Q3)
+                gecen_sene_ceyrek = net_kar_serisi.iloc[4] # 1 sene öncesi (Örn: 2024 Q3)
 
-       
-        net_kar_serisi = gelir_tablosu.loc['Net Income']
-        
-       
-        if len(net_kar_serisi) < 2:
-            return 0
+                if gecen_sene_ceyrek != 0:
+                    buyume = ((bu_ceyrek - gecen_sene_ceyrek) / abs(gecen_sene_ceyrek)) * 100
+                    return buyume
 
-        bu_sene = net_kar_serisi.iloc[0]    
-        gecen_sene = net_kar_serisi.iloc[1] 
+        # --- PLAN B: YILLIK (Veri yetersizse buraya düşer) ---
+        yillik_tablo = hisse.income_stmt
+        if not yillik_tablo.empty and 'Net Income' in yillik_tablo.index:
+            net_kar_serisi = yillik_tablo.loc['Net Income']
+            
+            if len(net_kar_serisi) >= 2:
+                bu_sene = net_kar_serisi.iloc[0]
+                gecen_sene = net_kar_serisi.iloc[1]
 
-        
-        if gecen_sene == 0:
-            return 0
+                if gecen_sene != 0:
+                    buyume = ((bu_sene - gecen_sene) / abs(gecen_sene)) * 100
+                    return buyume
 
-      
-        buyume = ((bu_sene - gecen_sene) / abs(gecen_sene)) * 100
-        return buyume
+        return 0
 
     except Exception as e:
-        print(f"⚠️ Büyüme hesabı hatası: {e}")
+        # Hata olursa sessizce 0 dön
         return 0
     #-----------------------------------------#
 def veri_cek_ve_hesapla(sembol):
