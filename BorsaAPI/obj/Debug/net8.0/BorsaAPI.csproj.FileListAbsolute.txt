@@ -34,3 +34,4 @@ c:\Users\v1nfu\OneDrive\Masaüstü\StackMarketApp\BorsaAPI\obj\Debug\net8.0\refi
 c:\Users\v1nfu\OneDrive\Masaüstü\StackMarketApp\BorsaAPI\obj\Debug\net8.0\BorsaAPI.pdb
 c:\Users\v1nfu\OneDrive\Masaüstü\StackMarketApp\BorsaAPI\obj\Debug\net8.0\BorsaAPI.genruntimeconfig.cache
 c:\Users\v1nfu\OneDrive\Masaüstü\StackMarketApp\BorsaAPI\obj\Debug\net8.0\ref\BorsaAPI.dll
+C:\Users\v1nfu\OneDrive\Masaüstü\StackMarketApp\BorsaAPI\obj\Debug\net8.0\BorsaAPI.sourcelink.json

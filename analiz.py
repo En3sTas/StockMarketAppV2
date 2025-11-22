@@ -1,65 +1,58 @@
 import yfinance as yf
 import pandas as pd
 
+def rsi_hesapla(df, periyot=14):
+    """Basit RSI Hesaplaması"""
+    delta = df['Close'].diff()
+    gain = (delta.where(delta > 0, 0)).fillna(0)
+    loss = (-delta.where(delta < 0, 0)).fillna(0)
+
+    avg_gain = gain.rolling(window=periyot).mean()
+    avg_loss = loss.rolling(window=periyot).mean()
+
+    rs = avg_gain / avg_loss
+    rsi = 100 - (100 / (1 + rs))
+    return rsi
+
 def veri_cek_ve_hesapla(sembol):
-    """
-    Bir hissenin teknik (SMA) ve temel (F/K, PD/DD) verilerini çeker.
-    Dönüş: (fiyat, sma50, sma200, fk, pd_dd) demeti.
-    """
     try:
-        # 1. Hisse Bağlantısı
         hisse = yf.Ticker(sembol)
-        
-        # ---------------------------
-        # BÖLÜM A: TEKNİK ANALİZ (Grafik Verileri)
-        # ---------------------------
-        # Son 1 yıllık veriyi çekiyoruz (SMA 200 hesaplayabilmek için en az 200 gün lazım)
         df = hisse.history(period="1y")
         
-        if df.empty:
-            print(f"⚠️ Veri boş geldi: {sembol}")
-            return None
+        if df.empty: return None
 
-        # Güncel Fiyat (Listenin sonundaki 'Close' değeri)
         guncel_fiyat = df['Close'].iloc[-1]
-
-        # Hareketli Ortalamaları Hesapla (Pandas ile sihirbazlık)
+        
+        # SMA Hesapları
         df['SMA_50'] = df['Close'].rolling(window=50).mean()
         df['SMA_200'] = df['Close'].rolling(window=200).mean()
-
-        # Son günün ortalamalarını al
         sma_50 = df['SMA_50'].iloc[-1]
         sma_200 = df['SMA_200'].iloc[-1]
 
-        # ---------------------------
-        # BÖLÜM B: TEMEL ANALİZ (Bilanço Verileri)
-        # ---------------------------
-        # hisse.info çok büyük bir sözlüktür, içinden cımbızla veri çekeceğiz.
-        bilgi = hisse.info
-        
-        # .get() metodu HAYAT KURTARIR. 
-        # Eğer veri yoksa hata verme, yerine 0 koy demektir.
-        fk_orani = bilgi.get('trailingPE', 0)    # F/K (Price to Earnings)
-        pd_dd = bilgi.get('priceToBook', 0)      # PD/DD (Price to Book)
+        # --- YENİ: RSI Hesabı ---
+        df['RSI'] = rsi_hesapla(df)
+        rsi_degeri = df['RSI'].iloc[-1]
+        # ------------------------
 
-        # ---------------------------
-        # BÖLÜM C: TEMİZLİK VE PAKETLEME
-        # ---------------------------
-        # Veritabanı NaN (Not a Number) sevmez, onları 0'a çevirelim.
+        bilgi = hisse.info
+        fk_orani = bilgi.get('trailingPE', 0)
+        pd_dd = bilgi.get('priceToBook', 0)
+
+        # NaN Temizliği
         if pd.isna(sma_50): sma_50 = 0
         if pd.isna(sma_200): sma_200 = 0
         if pd.isna(fk_orani): fk_orani = 0
         if pd.isna(pd_dd): pd_dd = 0
+        if pd.isna(rsi_degeri): rsi_degeri = 0 # RSI boşsa 0 yap
 
-       
-
-        # Tüm verileri SAF PYTHON float tipine çevirip gönderiyoruz
+        # Dönüşe rsi_degeri eklendi (6. eleman)
         return (
             float(guncel_fiyat), 
             float(sma_50), 
             float(sma_200), 
             float(fk_orani), 
-            float(pd_dd)
+            float(pd_dd), 
+            float(rsi_degeri)
         )
 
     except Exception as e:

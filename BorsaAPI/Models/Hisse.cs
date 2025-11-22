@@ -9,6 +9,7 @@ namespace BorsaAPI.Models
         public decimal Sma200 { get; set; }
         public decimal Fk { get; set; }
         public decimal PdDd { get; set; }
+        public decimal Rsi {get;set;}
         public DateTime SonGuncelleme { get; set; }
     }
 }

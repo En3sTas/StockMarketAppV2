@@ -1,0 +1,14 @@
+
+__pycache__/
+*.py[cod]
+venv/
+.env
+
+
+bin/
+obj/
+.vscode/
+
+
+config.py
+BorsaAPI/appsettings.json

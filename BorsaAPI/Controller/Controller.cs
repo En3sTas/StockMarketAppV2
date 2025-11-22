@@ -8,21 +8,27 @@ namespace BorsaAPI.Controllers
     [ApiController]
     public class HisselerController : ControllerBase
     {
-        private readonly IHisseRepository _hisseRepository; // <-- Değişken adı değişti
+        private readonly IHisseRepository _hisseRepository; 
 
-        // Constructor Injection
+        
         public HisselerController(IHisseRepository hisseRepository)
         {
             _hisseRepository = hisseRepository;
         }
 
         [HttpGet]
-        public IActionResult GetHisseler()
+        public IActionResult GetHisseler([FromQuery] decimal? maxFk, 
+            [FromQuery] decimal? minFk, 
+            [FromQuery] decimal? maxPdDd, 
+            [FromQuery] decimal? minPdDd
+            
+            , [FromQuery] decimal? minRsi
+            , [FromQuery] decimal? maxRsi)
         {
             try
             {
-                // Service üzerinden veriyi çekiyoruz
-                var veriler = _hisseRepository.TumHisseleriGetir();
+                
+                var veriler = _hisseRepository.TumHisseleriGetir(maxFk, minFk, maxPdDd, minPdDd,maxRsi,minRsi);
                 return Ok(veriler);
             }
             catch (Exception ex)

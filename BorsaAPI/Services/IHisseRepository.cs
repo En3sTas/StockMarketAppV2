@@ -2,9 +2,14 @@ using BorsaAPI.Models;
 
 namespace BorsaAPI.Services
 {
-    // Bu arayüz, yapılacak işlerin listesidir (Menü)
+    
     public interface IHisseRepository
     {
-        List<Hisse> TumHisseleriGetir();
+        List<Hisse> TumHisseleriGetir(
+            decimal? maxFk,decimal? minFk,
+            decimal? maxPdDd,decimal? minPdDd,
+            decimal? maxRsi, decimal? minRsi);
+
+        
     }
 }
