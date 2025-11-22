@@ -1,0 +1,11 @@
+{
+  "Version": 1,
+  "Hash": "eZPhSbuBlPNgadtlhprZKUVGqz1NFDyi4fRMx43Kd3I=",
+  "Source": "BorsaAPI",
+  "BasePath": "_content/BorsaAPI",
+  "Mode": "Default",
+  "ManifestType": "Build",
+  "ReferencedProjectsConfiguration": [],
+  "DiscoveryPatterns": [],
+  "Assets": []
+}
