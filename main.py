@@ -14,10 +14,10 @@ def sistemi_calistir():
         sonuc = analiz.veri_cek_ve_hesapla(sembol)
         
         if sonuc:
-            fiyat, sma50, sma200 ,fk, pd_dd,rsi = sonuc
+            fiyat, sma50, sma200 ,fk, pd_dd,rsi,macd_line,macd_signal,macd_hist = sonuc
             
             # 2. Database modülüne kaydettir
-            database.veriyi_kaydet(sembol, fiyat, sma50, sma200,fk,pd_dd,rsi)
+            database.veriyi_kaydet(sembol, fiyat, sma50, sma200,fk,pd_dd,rsi,macd_line,macd_signal,macd_hist)
         else:
             print(f"⚠️ {sembol} için veri alınamadı.")
             

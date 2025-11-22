@@ -8,7 +8,10 @@ namespace BorsaAPI.Services
         List<Hisse> TumHisseleriGetir(
             decimal? maxFk,decimal? minFk,
             decimal? maxPdDd,decimal? minPdDd,
-            decimal? maxRsi, decimal? minRsi);
+            decimal? maxRsi, decimal? minRsi,
+            decimal? maxMacdLine, decimal? minMacdLine,
+            decimal? maxMacdSignal, decimal? minMacdSignal,
+            decimal? maxMacdHist, decimal? minMacdHist);
 
         
     }
