@@ -3,311 +3,512 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Borsa Takip Robotu v1</title>
-    <!-- Tailwind CSS (Tasarım İçin) -->
+    <title>BorsaBot v5.3 - Ultimate Dashboard</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- FontAwesome (İkonlar İçin) -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
-        /* Özel Scrollbar */
-        ::-webkit-scrollbar { width: 8px; }
-        ::-webkit-scrollbar-track { background: #1f2937; }
-        ::-webkit-scrollbar-thumb { background: #4b5563; border-radius: 4px; }
-        ::-webkit-scrollbar-thumb:hover { background: #6b7280; }
+        /* Modern Scrollbar */
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: #111827; }
+        ::-webkit-scrollbar-thumb { background: #374151; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #4b5563; }
+        
+        /* Glassmorphism Efekti */
         .glass {
-            background: rgba(17, 24, 39, 0.7);
+            background: rgba(17, 24, 39, 0.95);
             backdrop-filter: blur(10px);
-            border: 1px solid rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.05);
         }
-        /* Demo Modu Uyarısı */
-        .demo-badge {
-            background: #f59e0b;
-            color: #000;
-            font-size: 0.7rem;
-            padding: 2px 6px;
-            border-radius: 4px;
-            font-weight: bold;
-            display: none; /* Başlangıçta gizli */
+        
+        /* Inputlardaki ok işaretlerini gizle */
+        input[type=number]::-webkit-inner-spin-button, 
+        input[type=number]::-webkit-outer-spin-button { 
+            -webkit-appearance: none; 
+            margin: 0; 
         }
+
+        /* Sekme Stilleri */
+        .tab-active { border-bottom: 2px solid #3b82f6; color: #60a5fa; background: rgba(59, 130, 246, 0.1); }
+        .tab-passive { color: #9ca3af; }
+        .tab-passive:hover { color: #d1d5db; background: rgba(255,255,255,0.05); }
     </style>
 </head>
-<body class="bg-gray-900 text-gray-100 font-sans antialiased min-h-screen">
+<body class="bg-[#0b0f19] text-gray-100 font-sans antialiased min-h-screen selection:bg-blue-600 selection:text-white">
 
-    <!-- ÜST BAR -->
-    <nav class="glass sticky top-0 z-50 border-b border-gray-700">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+    <nav class="glass sticky top-0 z-50 border-b border-gray-800/60">
+        <div class="max-w-[1920px] mx-auto px-4 sm:px-6 lg:px-8">
             <div class="flex items-center justify-between h-16">
                 <div class="flex items-center gap-3">
-                    <i class="fa-solid fa-robot text-blue-500 text-2xl"></i>
+                    <div class="bg-gradient-to-tr from-blue-700 to-blue-500 p-2 rounded-lg shadow-lg shadow-blue-900/40">
+                        <i class="fa-solid fa-robot text-white text-xl"></i>
+                    </div>
                     <div class="flex flex-col">
-                        <span class="font-bold text-xl tracking-wider leading-none">V1N<span class="text-blue-500">FU</span></span>
-                        <span id="demoBadge" class="demo-badge">DEMO MODU</span>
+                        <span class="font-bold text-xl tracking-wider leading-none">BORSA<span class="text-blue-500">BOT</span></span>
+                        <span class="text-[10px] text-gray-500 font-mono">ALGO TRADING SYSTEM</span>
                     </div>
                 </div>
+
+                <div class="flex bg-gray-900/50 p-1 rounded-lg border border-gray-800">
+                    <button onclick="switchTab('market')" id="tab-market" class="tab-active px-6 py-2 rounded-md text-sm font-bold transition flex items-center gap-2">
+                        <i class="fa-solid fa-globe"></i> Piyasa
+                    </button>
+                    <button onclick="switchTab('portfolio')" id="tab-portfolio" class="tab-passive px-6 py-2 rounded-md text-sm font-bold transition flex items-center gap-2">
+                        <i class="fa-solid fa-wallet"></i> Portföyüm
+                    </button>
+                </div>
+
                 <div class="flex items-center gap-4">
-                    <div id="connectionStatus" class="flex items-center gap-2 text-sm text-gray-400">
-                        <span class="w-2 h-2 rounded-full bg-red-500 animate-pulse"></span> Bağlantı Bekleniyor...
+                    <div id="connectionStatus" class="flex items-center gap-2 text-xs font-mono text-gray-500 bg-gray-900/50 px-3 py-1.5 rounded-full border border-gray-800">
+                        <span class="w-2 h-2 rounded-full bg-red-500 animate-pulse"></span> Bağlantı Yok
                     </div>
-                    <button onclick="verileriGetir()" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition flex items-center gap-2">
-                        <i class="fa-solid fa-rotate"></i> Yenile
+                    <button onclick="verileriGetir()" class="bg-blue-600 hover:bg-blue-500 text-white px-5 py-2 rounded-lg transition flex items-center gap-2 text-sm font-semibold shadow-lg shadow-blue-900/20 active:scale-95">
+                        <i class="fa-solid fa-rotate"></i>
                     </button>
                 </div>
             </div>
         </div>
     </nav>
 
-    <!-- HATA / BİLGİ MESAJI ALANI -->
-    <div id="messageArea" class="max-w-[1600px] mx-auto mt-4 px-6 hidden">
-        <div class="bg-yellow-500/10 border border-yellow-500/50 text-yellow-200 p-4 rounded-lg flex items-start gap-3">
-            <i class="fa-solid fa-triangle-exclamation mt-1"></i>
-            <div>
-                <h3 class="font-bold">Bağlantı Hatası - Demo Veriler Gösteriliyor</h3>
-                <p class="text-sm opacity-80">Yerel API'ye (localhost) ulaşılamadı. Bu durum önizleme ekranında normaldir. Dosyayı bilgisayarınıza kaydedip açtığınızda ve C# uygulamasını çalıştırdığınızda gerçek veriler gelecektir.</p>
-            </div>
-        </div>
-    </div>
-
-    <div class="max-w-[1600px] mx-auto p-6 grid grid-cols-12 gap-6">
+    <div class="max-w-[1920px] mx-auto p-4 lg:p-6">
         
-        <!-- SOL PANEL: FİLTRELER -->
-        <div class="col-span-12 lg:col-span-3 space-y-6">
-            <div class="glass rounded-xl p-5">
-                <h2 class="text-lg font-semibold mb-4 border-b border-gray-700 pb-2 flex items-center gap-2">
-                    <i class="fa-solid fa-filter text-blue-400"></i> Filtreler
-                </h2>
+        <div id="market-view" class="grid grid-cols-12 gap-6">
+            
+            <div class="col-span-12 xl:col-span-3 lg:col-span-3 space-y-6">
+                <div class="glass rounded-xl p-5 h-[calc(100vh-100px)] sticky top-24 overflow-y-auto flex flex-col">
+                    
+                    <div class="flex items-center justify-between mb-6 border-b border-gray-800 pb-4">
+                        <h2 class="text-sm font-bold text-white uppercase tracking-widest flex items-center gap-2">
+                            <i class="fa-solid fa-filter text-blue-500"></i> Akıllı Filtreler
+                        </h2>
+                        <button onclick="temizle()" class="text-xs text-gray-500 hover:text-white transition">
+                            Temizle
+                        </button>
+                    </div>
+                    
+                    <div class="space-y-5 flex-1 pr-1">
+                        
+                        <div class="bg-[#131b2e] p-4 rounded-lg border border-gray-800/60 shadow-inner">
+                            <label class="text-xs text-blue-400 font-bold mb-3 block flex items-center gap-2">
+                                <i class="fa-solid fa-chart-line"></i> TREND & HACİM
+                            </label>
+                            
+                            <div class="mb-3">
+                                <span class="text-[10px] text-gray-500 uppercase font-semibold mb-1 block">ADX (Trend Gücü)</span>
+                                <div class="grid grid-cols-2 gap-2">
+                                    <input type="number" id="minAdx" placeholder="Min" class="bg-gray-800/50 border border-gray-700 rounded p-2 text-xs text-white focus:border-blue-500 focus:bg-gray-800 outline-none transition">
+                                    <input type="number" id="maxAdx" placeholder="Max" class="bg-gray-800/50 border border-gray-700 rounded p-2 text-xs text-white focus:border-blue-500 focus:bg-gray-800 outline-none transition">
+                                </div>
+                            </div>
+
+                            <div class="mb-3">
+                                <span class="text-[10px] text-gray-500 uppercase font-semibold mb-1 block">Hacim Oranı (x Katı)</span>
+                                <div class="grid grid-cols-2 gap-2">
+                                    <input type="number" id="minHacim" placeholder="Min (1.5)" class="bg-gray-800/50 border border-gray-700 rounded p-2 text-xs text-white focus:border-blue-500 focus:bg-gray-800 outline-none transition">
+                                    <input type="number" id="maxHacim" placeholder="Max" class="bg-gray-800/50 border border-gray-700 rounded p-2 text-xs text-white focus:border-blue-500 focus:bg-gray-800 outline-none transition">
+                                </div>
+                            </div>
+
+                            <div>
+                                <span class="text-[10px] text-gray-500 uppercase font-semibold mb-1 block">Yön (+DI / -DI)</span>
+                                <div class="grid grid-cols-2 gap-2">
+                                    <input type="number" id="minDmp" placeholder="Min +DI" class="bg-gray-800/50 border border-gray-700 rounded p-2 text-xs text-emerald-400 placeholder-emerald-800/50 focus:border-emerald-500 focus:bg-gray-800 outline-none transition">
+                                    <input type="number" id="minDmn" placeholder="Min -DI" class="bg-gray-800/50 border border-gray-700 rounded p-2 text-xs text-red-400 placeholder-red-800/50 focus:border-red-500 focus:bg-gray-800 outline-none transition">
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="bg-[#131b2e] p-4 rounded-lg border border-gray-800/60 shadow-inner">
+                            <label class="text-xs text-purple-400 font-bold mb-3 block flex items-center gap-2">
+                                <i class="fa-solid fa-wave-square"></i> OSİLATÖRLER
+                            </label>
+
+                            <div class="mb-3">
+                                <span class="text-[10px] text-gray-500 uppercase font-semibold mb-1 block">RSI (14)</span>
+                                <div class="grid grid-cols-2 gap-2">
+                                    <input type="number" id="minRsi" placeholder="Min (30)" class="bg-gray-800/50 border border-gray-700 rounded p-2 text-xs text-white focus:border-purple-500 focus:bg-gray-800 outline-none transition">
+                                    <input type="number" id="maxRsi" placeholder="Max (70)" class="bg-gray-800/50 border border-gray-700 rounded p-2 text-xs text-white focus:border-purple-500 focus:bg-gray-800 outline-none transition">
+                                </div>
+                            </div>
+
+                            <div>
+                                <span class="text-[10px] text-gray-500 uppercase font-semibold mb-1 block">MACD Histogram</span>
+                                <div class="grid grid-cols-2 gap-2">
+                                    <input type="number" id="minMacdHist" placeholder="Min" class="bg-gray-800/50 border border-gray-700 rounded p-2 text-xs text-white focus:border-purple-500 focus:bg-gray-800 outline-none transition">
+                                    <input type="number" id="maxMacdHist" placeholder="Max" class="bg-gray-800/50 border border-gray-700 rounded p-2 text-xs text-white focus:border-purple-500 focus:bg-gray-800 outline-none transition">
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="bg-[#131b2e] p-4 rounded-lg border border-gray-800/60 shadow-inner">
+                            <label class="text-xs text-amber-500 font-bold mb-3 block flex items-center gap-2">
+                                <i class="fa-solid fa-coins"></i> TEMEL VERİLER
+                            </label>
+
+                            <div class="mb-3">
+                                <span class="text-[10px] text-gray-500 uppercase font-semibold mb-1 block">F/K Oranı</span>
+                                <div class="grid grid-cols-2 gap-2">
+                                    <input type="number" id="minFk" placeholder="Min" class="bg-gray-800/50 border border-gray-700 rounded p-2 text-xs text-white focus:border-amber-500 focus:bg-gray-800 outline-none transition">
+                                    <input type="number" id="maxFk" placeholder="Max (10)" class="bg-gray-800/50 border border-gray-700 rounded p-2 text-xs text-white focus:border-amber-500 focus:bg-gray-800 outline-none transition">
+                                </div>
+                            </div>
+
+                            <div class="mb-3">
+                                <span class="text-[10px] text-gray-500 uppercase font-semibold mb-1 block">PD/DD Oranı</span>
+                                <div class="grid grid-cols-2 gap-2">
+                                    <input type="number" id="minPdDd" placeholder="Min" class="bg-gray-800/50 border border-gray-700 rounded p-2 text-xs text-white focus:border-amber-500 focus:bg-gray-800 outline-none transition">
+                                    <input type="number" id="maxPdDd" placeholder="Max (2)" class="bg-gray-800/50 border border-gray-700 rounded p-2 text-xs text-white focus:border-amber-500 focus:bg-gray-800 outline-none transition">
+                                </div>
+                            </div>
+
+                            <div>
+                                <span class="text-[10px] text-gray-500 uppercase font-semibold mb-1 block">Büyüme (%)</span>
+                                <div class="grid grid-cols-2 gap-2">
+                                    <input type="number" id="minBuyume" placeholder="Min (50)" class="bg-gray-800/50 border border-gray-700 rounded p-2 text-xs text-white focus:border-amber-500 focus:bg-gray-800 outline-none transition">
+                                    <input type="number" id="maxBuyume" placeholder="Max" class="bg-gray-800/50 border border-gray-700 rounded p-2 text-xs text-white focus:border-amber-500 focus:bg-gray-800 outline-none transition">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="pt-4 mt-auto">
+                        <button onclick="verileriGetir()" class="w-full bg-blue-600 hover:bg-blue-500 text-white py-3 rounded-lg font-bold text-sm transition shadow-lg shadow-blue-900/40 active:scale-95 flex items-center justify-center gap-2">
+                            <i class="fa-solid fa-magnifying-glass"></i> SONUÇLARI GETİR
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-span-12 xl:col-span-9 lg:col-span-9">
                 
-                <div class="space-y-4">
-                    <!-- Temel Analiz -->
-                    <div>
-                        <label class="text-xs text-gray-400 uppercase font-bold mb-2 block">Temel Analiz</label>
-                        <div class="grid grid-cols-2 gap-2">
-                            <input type="number" id="minFk" placeholder="Min F/K" class="bg-gray-800 border border-gray-700 rounded p-2 text-sm w-full focus:border-blue-500 outline-none">
-                            <input type="number" id="maxFk" placeholder="Max F/K" class="bg-gray-800 border border-gray-700 rounded p-2 text-sm w-full focus:border-blue-500 outline-none">
-                            <input type="number" id="minPdDd" placeholder="Min PD/DD" class="bg-gray-800 border border-gray-700 rounded p-2 text-sm w-full focus:border-blue-500 outline-none">
-                            <input type="number" id="maxPdDd" placeholder="Max PD/DD" class="bg-gray-800 border border-gray-700 rounded p-2 text-sm w-full focus:border-blue-500 outline-none">
+                <div id="messageArea" class="hidden mb-4">
+                    <div class="bg-amber-500/10 border border-amber-500/20 text-amber-200 p-4 rounded-lg flex items-center gap-3">
+                        <i class="fa-solid fa-triangle-exclamation text-xl"></i>
+                        <div>
+                            <h3 class="font-bold text-sm">Offline Mod</h3>
+                            <p class="text-xs opacity-80">API bağlantısı kurulamadı. Örnek veriler gösteriliyor.</p>
                         </div>
                     </div>
+                </div>
 
-                    <!-- Teknik Analiz -->
-                    <div>
-                        <label class="text-xs text-gray-400 uppercase font-bold mb-2 block">Teknik Analiz (RSI)</label>
-                        <div class="grid grid-cols-2 gap-2">
-                            <input type="number" id="minRsi" placeholder="Min RSI" class="bg-gray-800 border border-gray-700 rounded p-2 text-sm w-full focus:border-blue-500 outline-none">
-                            <input type="number" id="maxRsi" placeholder="Max RSI" class="bg-gray-800 border border-gray-700 rounded p-2 text-sm w-full focus:border-blue-500 outline-none">
-                        </div>
+                <div class="glass rounded-xl overflow-hidden shadow-2xl min-h-[500px]">
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left border-collapse">
+                            <thead>
+                                <tr class="bg-[#0f1522] text-gray-400 text-[11px] uppercase tracking-wider border-b border-gray-800 h-12">
+                                    <th class="p-4 font-bold text-white sticky left-0 bg-[#0f1522] z-10 border-r border-gray-800/50">Sembol</th>
+                                    <th class="p-4 font-semibold">Fiyat</th>
+                                    <th class="p-4 font-semibold text-blue-400">SMA 50</th>
+                                    <th class="p-4 font-semibold text-yellow-400">SMA 200</th>
+                                    <th class="p-4 font-semibold">RSI (14)</th>
+                                    <th class="p-4 font-semibold text-center bg-blue-900/10">Trend (ADX)</th>
+                                    <th class="p-4 font-semibold text-center">Hacim</th>
+                                    <th class="p-4 font-semibold">MACD Hist</th>
+                                    <th class="p-4 font-semibold">MACD Sinyal</th>
+                                    <th class="p-4 font-semibold text-amber-500/80">F/K</th>
+                                    <th class="p-4 font-semibold text-amber-500/80">PD/DD</th>
+                                    <th class="p-4 font-semibold text-amber-500/80">Büyüme</th>
+                                    <th class="p-4 font-semibold">Tarih</th>
+                                </tr>
+                            </thead>
+                            <tbody id="hisseTablosu" class="divide-y divide-gray-800 text-sm font-medium">
+                                <tr><td colspan="13" class="p-12 text-center text-gray-500">Veriler bekleniyor...</td></tr>
+                            </tbody>
+                        </table>
                     </div>
-
-                    <!-- MACD -->
-                    <div>
-                        <label class="text-xs text-gray-400 uppercase font-bold mb-2 block">MACD Göstergeleri</label>
-                        <div class="grid grid-cols-2 gap-2 mb-2">
-                            <input type="number" id="minMacdHist" placeholder="Min Hist" class="bg-gray-800 border border-gray-700 rounded p-2 text-sm w-full focus:border-blue-500 outline-none">
-                            <input type="number" id="maxMacdHist" placeholder="Max Hist" class="bg-gray-800 border border-gray-700 rounded p-2 text-sm w-full focus:border-blue-500 outline-none">
-                        </div>
-                    </div>
-
-                    <!-- Büyüme -->
-                    <div>
-                        <label class="text-xs text-gray-400 uppercase font-bold mb-2 block">Büyüme Oranı (%)</label>
-                        <div class="grid grid-cols-2 gap-2">
-                            <input type="number" id="minBuyume" placeholder="Min %" class="bg-gray-800 border border-gray-700 rounded p-2 text-sm w-full focus:border-blue-500 outline-none">
-                            <input type="number" id="maxBuyume" placeholder="Max %" class="bg-gray-800 border border-gray-700 rounded p-2 text-sm w-full focus:border-blue-500 outline-none">
-                        </div>
-                    </div>
-
-                    <button onclick="verileriGetir()" class="w-full bg-blue-600 hover:bg-blue-500 text-white py-2 rounded-lg font-semibold transition">
-                        Sonuçları Getir
-                    </button>
-                    <button onclick="temizle()" class="w-full bg-gray-700 hover:bg-gray-600 text-gray-300 py-2 rounded-lg text-sm transition">
-                        Filtreleri Temizle
-                    </button>
                 </div>
             </div>
         </div>
 
-        <!-- SAĞ PANEL: TABLO -->
-        <div class="col-span-12 lg:col-span-9">
-            <div class="glass rounded-xl overflow-hidden">
+        <div id="portfolio-view" class="hidden space-y-6">
+            
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div class="glass p-6 rounded-xl flex items-center justify-between bg-gradient-to-br from-gray-900 to-blue-900/20">
+                    <div>
+                        <p class="text-gray-400 text-xs uppercase font-bold tracking-widest mb-1">Toplam Portföy Değeri</p>
+                        <h2 id="totalBalance" class="text-3xl font-bold text-white font-mono">₺0.00</h2>
+                    </div>
+                    <div class="bg-blue-500/20 p-3 rounded-full text-blue-400"><i class="fa-solid fa-wallet text-2xl"></i></div>
+                </div>
+
+                <div class="glass p-6 rounded-xl flex items-center justify-between">
+                    <div>
+                        <p class="text-gray-400 text-xs uppercase font-bold tracking-widest mb-1">Toplam Kar/Zarar</p>
+                        <h2 id="totalPnL" class="text-3xl font-bold text-gray-200 font-mono">₺0.00</h2>
+                        <span id="totalPnLPercent" class="text-sm font-bold font-mono">0.00%</span>
+                    </div>
+                    <div id="pnlIcon" class="bg-gray-800 p-3 rounded-full text-gray-500"><i class="fa-solid fa-chart-pie text-2xl"></i></div>
+                </div>
+
+                <div class="glass p-6 rounded-xl flex items-center justify-between">
+                    <div>
+                        <p class="text-gray-400 text-xs uppercase font-bold tracking-widest mb-1">Hisse Çeşidi</p>
+                        <h2 id="stockCount" class="text-3xl font-bold text-white font-mono">0</h2>
+                    </div>
+                    <div class="bg-purple-500/20 p-3 rounded-full text-purple-400"><i class="fa-solid fa-layer-group text-2xl"></i></div>
+                </div>
+            </div>
+
+            <div class="glass rounded-xl overflow-hidden shadow-2xl">
+                <div class="px-6 py-4 border-b border-gray-800 flex justify-between items-center bg-[#0f1522]">
+                    <h3 class="font-bold text-white flex items-center gap-2">
+                        <img src="https://getmidas.com/wp-content/uploads/2021/05/midas-favicon.png" class="w-5 h-5 grayscale opacity-80" alt="Midas">
+                        Midas Varlıklarım
+                    </h3>
+                    <span class="text-xs text-gray-500">Canlı Veri</span>
+                </div>
                 <div class="overflow-x-auto">
                     <table class="w-full text-left border-collapse">
                         <thead>
-                            <tr class="bg-gray-800 text-gray-400 text-xs uppercase tracking-wider">
-                                <th class="p-4 font-semibold">Sembol</th>
-                                <th class="p-4 font-semibold">Fiyat</th>
-                                <th class="p-4 font-semibold text-blue-300">SMA 50</th>
-                                <th class="p-4 font-semibold text-yellow-300">SMA 200</th>
-                                <th class="p-4 font-semibold">RSI (14)</th>
-                                <th class="p-4 font-semibold">TREND (ADX/DI)</th>
-                                <th class="p-4 font-semibold">MACD Hist</th>
-                                <th class="p-4 font-semibold">MACD Sinyal</th>
-                                <th class="p-4 font-semibold">F/K</th>
-                                <th class="p-4 font-semibold">PD/DD</th>
-                                <th class="p-4 font-semibold">Büyüme</th>
-                                <th class="p-4 font-semibold">Son Güncelleme</th>
+                            <tr class="bg-gray-900/50 text-gray-400 text-[11px] uppercase tracking-wider border-b border-gray-800">
+                                <th class="p-4 font-bold text-white">Sembol</th>
+                                <th class="p-4 font-semibold text-right">Adet</th>
+                                <th class="p-4 font-semibold text-right">Ort. Maliyet</th>
+                                <th class="p-4 font-semibold text-right text-blue-300">Anlık Fiyat</th>
+                                <th class="p-4 font-semibold text-right">Toplam Değer</th>
+                                <th class="p-4 font-semibold text-right">Kar/Zarar (TL)</th>
+                                <th class="p-4 font-semibold text-right">Kar/Zarar (%)</th>
+                                <th class="p-4 font-semibold text-center">Sinyal</th>
                             </tr>
                         </thead>
-                        <tbody id="hisseTablosu" class="divide-y divide-gray-700 text-sm">
-                            <!-- Veriler Buraya Gelecek -->
-                            <tr>
-                                <td colspan="9" class="p-8 text-center text-gray-500">Veriler yükleniyor...</td>
-                            </tr>
-                        </tbody>
+                        <tbody id="portfolioTablosu" class="divide-y divide-gray-800 text-sm font-medium">
+                            </tbody>
                     </table>
                 </div>
-            </div>
-            <div class="mt-2 text-right text-xs text-gray-500">
-                * Veriler API üzerinden çekilmektedir.
             </div>
         </div>
     </div>
 
-    <!-- JAVASCRIPT KISMI -->
     <script>
-        // ⚠️ DİKKAT: C# API Port Numaranı Buraya Yaz (dotnet run dediğinde çıkan port)
-        // Eğer yerel makinede çalıştırıyorsan burası geçerlidir.
         const API_BASE_URL = "http://localhost:5158/api/hisseler";
 
-        // --- DEMO (MOCK) VERİLER (API Çalışmadığında Görünecek) ---
-        const MOCK_DATA = [
-            { sembol: "THYAO", fiyat: 273.50, rsi: 28.5, macdHist: 2.45, macdLine: 5.2, macdSignal: 2.75, fk: 3.2, pdDd: 0.8, buyumeOrani: 45.2, sonGuncelleme: new Date().toISOString() },
-            { sembol: "ASELS", fiyat: 62.10, rsi: 45.0, macdHist: -0.5, macdLine: 1.2, macdSignal: 1.7, fk: 12.5, pdDd: 3.4, buyumeOrani: 12.8, sonGuncelleme: new Date().toISOString() },
-            { sembol: "GARAN", fiyat: 85.30, rsi: 72.1, macdHist: 1.1, macdLine: 3.5, macdSignal: 2.4, fk: 4.1, pdDd: 1.1, buyumeOrani: 110.5, sonGuncelleme: new Date().toISOString() },
-            { sembol: "EREGL", fiyat: 42.00, rsi: 35.0, macdHist: 0.05, macdLine: 0.1, macdSignal: 0.05, fk: 8.9, pdDd: 1.2, buyumeOrani: -5.2, sonGuncelleme: new Date().toISOString() },
-            { sembol: "BINHO", fiyat: 225.00, rsi: 55.0, macdHist: -2.1, macdLine: -5.0, macdSignal: -2.9, fk: 25.0, pdDd: 8.5, buyumeOrani: -222.17, sonGuncelleme: new Date().toISOString() }
+        // --- MİDAS PORTFÖYÜN (Şimdilik Manuel, C# tarafı hazırsa API'den çekilebilir) ---
+        const MY_PORTFOLIO = [
+            { sembol: "BINHO", adet: 2420, maliyet: 10.68 }
+            
         ];
 
-        async function verileriGetir() {
-            const statusDiv = document.getElementById('connectionStatus');
-            const tbody = document.getElementById('hisseTablosu');
-            const messageArea = document.getElementById('messageArea');
-            const demoBadge = document.getElementById('demoBadge');
-            
-            // Filtre Değerlerini Al
-            const params = new URLSearchParams();
-            addParam(params, 'minFk', 'minFk');
-            addParam(params, 'maxFk', 'maxFk');
-            addParam(params, 'minPdDd', 'minPdDd');
-            addParam(params, 'maxPdDd', 'maxPdDd');
-            addParam(params, 'minRsi', 'minRsi');
-            addParam(params, 'maxRsi', 'maxRsi');
-            addParam(params, 'minMacdHist', 'minMacdHist');
-            addParam(params, 'maxMacdHist', 'maxMacdHist');
-            addParam(params, 'minBuyumeOrani', 'minBuyume');
-            addParam(params, 'maxBuyumeOrani', 'maxBuyume');
+        let globalData = [];
 
-            try {
-                statusDiv.innerHTML = '<span class="w-2 h-2 rounded-full bg-yellow-500 animate-pulse"></span> Yükleniyor...';
-                
-                // API İsteği Atmayı Dene
-                const response = await fetch(`${API_BASE_URL}?${params.toString()}`, {
-                    method: 'GET',
-                    headers: {
-                        'Accept': 'application/json',
-                    }
-                });
-                
-                if (!response.ok) throw new Error("API Hatası");
-                
-                const data = await response.json();
-                
-                // BAŞARILI İSE:
-                statusDiv.innerHTML = '<span class="w-2 h-2 rounded-full bg-green-500"></span> Bağlı (Online)';
-                messageArea.classList.add('hidden');
-                demoBadge.style.display = 'none';
-                renderTable(data);
+        function switchTab(tabName) {
+            const marketView = document.getElementById('market-view');
+            const portfolioView = document.getElementById('portfolio-view');
+            const tabMarket = document.getElementById('tab-market');
+            const tabPortfolio = document.getElementById('tab-portfolio');
 
-            } catch (error) {
-                // HATA VARSA (DEMO MODUNA GEÇ):
-                console.warn("API'ye bağlanılamadı, Demo moda geçiliyor:", error);
-                
-                statusDiv.innerHTML = '<span class="w-2 h-2 rounded-full bg-orange-500"></span> Demo Modu';
-                messageArea.classList.remove('hidden');
-                demoBadge.style.display = 'inline-block';
-                
-                // Sahte veriyi göster
-                renderTable(MOCK_DATA);
+            if (tabName === 'market') {
+                marketView.classList.remove('hidden');
+                portfolioView.classList.add('hidden');
+                tabMarket.className = "tab-active px-6 py-2 rounded-md text-sm font-bold transition flex items-center gap-2";
+                tabPortfolio.className = "tab-passive px-6 py-2 rounded-md text-sm font-bold transition flex items-center gap-2";
+            } else {
+                marketView.classList.add('hidden');
+                portfolioView.classList.remove('hidden');
+                tabMarket.className = "tab-passive px-6 py-2 rounded-md text-sm font-bold transition flex items-center gap-2";
+                tabPortfolio.className = "tab-active px-6 py-2 rounded-md text-sm font-bold transition flex items-center gap-2";
+                renderPortfolio();
             }
         }
 
-        function addParam(params, apiName, inputId) {
-            const val = document.getElementById(inputId).value;
-            if (val) params.append(apiName, val);
+        async function verileriGetir() {
+            const statusDiv = document.getElementById('connectionStatus');
+            const messageArea = document.getElementById('messageArea');
+            const params = new URLSearchParams();
+            
+            // Filtre Parametrelerini Topla
+            // Temel
+            addParam(params, 'minFk', 'minFk'); addParam(params, 'maxFk', 'maxFk');
+            addParam(params, 'minPdDd', 'minPdDd'); addParam(params, 'maxPdDd', 'maxPdDd');
+            addParam(params, 'minBuyumeOrani', 'minBuyume'); addParam(params, 'maxBuyumeOrani', 'maxBuyume');
+            // Teknik
+            addParam(params, 'minRsi', 'minRsi'); addParam(params, 'maxRsi', 'maxRsi');
+            addParam(params, 'minMacdHist', 'minMacdHist'); addParam(params, 'maxMacdHist', 'maxMacdHist');
+            // Trend
+            addParam(params, 'minAdx', 'minAdx'); addParam(params, 'maxAdx', 'maxAdx');
+            addParam(params, 'minHacimOrani', 'minHacim'); addParam(params, 'maxHacimOrani', 'maxHacim');
+            addParam(params, 'minDmp', 'minDmp'); addParam(params, 'minDmn', 'minDmn');
+
+            try {
+                statusDiv.innerHTML = '<span class="w-2 h-2 rounded-full bg-yellow-500 animate-pulse"></span> ...';
+                const response = await fetch(`${API_BASE_URL}?${params.toString()}`);
+                if (!response.ok) throw new Error("API Hatası");
+                
+                globalData = await response.json();
+                
+                statusDiv.innerHTML = '<span class="w-2 h-2 rounded-full bg-emerald-500"></span> Online';
+                statusDiv.className = "flex items-center gap-2 text-xs font-mono text-emerald-400 bg-emerald-900/20 px-3 py-1.5 rounded-full border border-emerald-900";
+                messageArea.classList.add('hidden');
+                
+                // Frontend Filtreleme (Max değerler için garanti)
+                let filteredData = frontendFiltrele(globalData);
+
+                renderMarketTable(filteredData);
+                renderPortfolio(); 
+
+            } catch (error) {
+                console.warn(error);
+                statusDiv.innerHTML = '<span class="w-2 h-2 rounded-full bg-red-500"></span> Offline';
+                statusDiv.className = "flex items-center gap-2 text-xs font-mono text-gray-500 bg-gray-900 px-3 py-1.5 rounded-full border border-gray-800";
+                messageArea.classList.remove('hidden');
+                
+                // Demo veri göster
+                const MOCK_DATA = [
+                    { sembol: "THYAO", fiyat: 273.50, sma50: 260.00, sma200: 240.50, rsi: 28.5, adx: 35.2, dmp: 12.0, dmn: 25.0, hacimOrani: 2.1, macdHist: 2.45, macdLine: 5.2, macdSignal: 2.75, fk: 3.2, pdDd: 0.8, buyumeOrani: 45.2, sonGuncelleme: new Date().toISOString() },
+                    { sembol: "ASELS", fiyat: 62.10, sma50: 60.00, sma200: 65.00, rsi: 45.0, adx: 15.0, dmp: 18.0, dmn: 19.0, hacimOrani: 0.8, macdHist: -0.5, macdLine: 1.2, macdSignal: 1.7, fk: 12.5, pdDd: 3.4, buyumeOrani: 12.8, sonGuncelleme: new Date().toISOString() }
+                ];
+                globalData = MOCK_DATA;
+                renderMarketTable(MOCK_DATA);
+            }
         }
 
-        function renderTable(data) {
+        function frontendFiltrele(data) {
+            const maxAdx = parseFloat(val('maxAdx')) || 9999;
+            const minHacim = parseFloat(val('minHacim')) || 0;
+            const maxHacim = parseFloat(val('maxHacim')) || 9999;
+            // Diğer Max değerleri API yapıyor ama frontend'de de garantilemek istersen:
+            const maxFk = parseFloat(val('maxFk')) || 9999;
+            const maxPdDd = parseFloat(val('maxPdDd')) || 9999;
+            const maxBuyume = parseFloat(val('maxBuyume')) || 99999;
+
+            return data.filter(h => 
+                h.adx <= maxAdx && 
+                h.hacimOrani >= minHacim && h.hacimOrani <= maxHacim &&
+                h.fk <= maxFk &&
+                h.pdDd <= maxPdDd &&
+                h.buyumeOrani <= maxBuyume
+            );
+        }
+
+        function renderMarketTable(data) {
             const tbody = document.getElementById('hisseTablosu');
             tbody.innerHTML = '';
-
+            
             if (data.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="9" class="p-8 text-center text-gray-500">Kriterlere uygun hisse bulunamadı.</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="13" class="p-12 text-center text-gray-500">Aradığınız kriterlere uygun hisse bulunamadı.</td></tr>';
                 return;
             }
 
             data.forEach(h => {
-                // Renklendirme Mantığı
-                const rsiClass = h.rsi < 30 ? 'text-green-400 font-bold animate-pulse' : (h.rsi > 70 ? 'text-red-400 font-bold' : 'text-gray-300');
-                const macdClass = h.macdHist > 0 ? 'text-green-400' : 'text-red-400';
-                const buyumeClass = h.buyumeOrani > 0 ? 'text-green-400' : 'text-red-400';
+                const rsiClass = h.rsi < 30 ? 'text-emerald-400 font-bold animate-pulse' : (h.rsi > 70 ? 'text-red-400 font-bold' : 'text-gray-400');
+                const macdClass = h.macdHist > 0 ? 'text-emerald-400' : 'text-red-400';
+                const buyumeClass = h.buyumeOrani > 0 ? 'text-emerald-400' : 'text-red-400';
+                const adxClass = h.adx > 25 ? 'text-white font-bold' : 'text-gray-600';
                 
-                // Tarih Formatlama
-                let tarih = "Bilinmiyor";
-                if (h.sonGuncelleme) {
-                    tarih = new Date(h.sonGuncelleme).toLocaleString('tr-TR');
-                }
+                // Hacim Görseli
+                let volText = 'text-gray-500';
+                let volIcon = 'fa-battery-quarter text-gray-700';
+                if (h.hacimOrani > 2.0) { volText = 'text-orange-400 font-bold'; volIcon = 'fa-fire-flame-curved animate-pulse text-orange-500'; }
+                else if (h.hacimOrani > 1.2) { volText = 'text-emerald-300'; volIcon = 'fa-arrow-trend-up text-emerald-500'; }
+                
+                const tarih = new Date(h.sonGuncelleme).toLocaleTimeString('tr-TR', {hour: '2-digit', minute:'2-digit'});
 
                 const row = `
-                        <tr class="hover:bg-gray-800 transition duration-150 border-b border-gray-800/50">
-                            <td class="p-4 font-bold text-white">${h.sembol}</td>
-                            <td class="p-4 text-blue-300 font-medium">${h.fiyat.toFixed(2)} ₺</td>
-                            
-                            <td class="p-4 ${h.fiyat > h.sma50 ? 'text-green-300 font-semibold' : 'text-gray-500'}">
-                                ${h.sma50.toFixed(2)}
-                            </td>
-
-                            <td class="p-4 ${h.fiyat > h.sma200 ? 'text-yellow-300 font-semibold' : 'text-gray-500'}">
-                                ${h.sma200.toFixed(2)}
-                            </td>
-
-                            <td class="p-4 ${rsiClass}">${h.rsi.toFixed(2)}</td>
-                            
-                            <td class="p-4">
-                                <div class="flex flex-col">
-                                    <span class="font-bold text-sm ${h.adx > 25 ? 'text-white' : 'text-gray-500'}">
-                                        ADX: ${h.adx.toFixed(2)}
-                                    </span>
-                                    <div class="text-xs mt-1 flex gap-2 font-mono">
-                                        <span class="text-green-400" title="+DI">+: ${h.dmp.toFixed(1)}</span>
-                                        <span class="text-red-400" title="-DI">-: ${h.dmn.toFixed(1)}</span>
-                                    </div>
+                    <tr class="hover:bg-gray-800/40 transition border-b border-gray-800/30 group">
+                        <td class="p-4 font-bold text-white sticky left-0 bg-[#0b0f19] group-hover:bg-gray-800/40 z-10 border-r border-gray-800/50">${h.sembol}</td>
+                        <td class="p-4 text-blue-300 font-mono text-base tracking-tight">${h.fiyat.toFixed(2)} ₺</td>
+                        <td class="p-4 font-mono ${h.fiyat > h.sma50 ? 'text-emerald-300/90' : 'text-gray-600'}">${h.sma50.toFixed(2)}</td>
+                        <td class="p-4 font-mono ${h.fiyat > h.sma200 ? 'text-yellow-300/90' : 'text-gray-600'}">${h.sma200.toFixed(2)}</td>
+                        <td class="p-4 font-mono ${rsiClass}">${h.rsi.toFixed(2)}</td>
+                        
+                        <td class="p-4 text-center bg-blue-900/5">
+                            <div class="flex flex-col items-center">
+                                <span class="${adxClass} text-sm">${h.adx.toFixed(2)}</span>
+                                <div class="text-[10px] mt-1 flex gap-2 font-mono bg-gray-900/80 px-2 py-0.5 rounded border border-gray-700/50">
+                                    <span class="text-emerald-500" title="+DI">+${h.dmp.toFixed(1)}</span>
+                                    <span class="text-gray-600">|</span>
+                                    <span class="text-red-500" title="-DI">-${h.dmn.toFixed(1)}</span>
                                 </div>
-                            </td>
+                            </div>
+                        </td>
 
-                            <td class="p-4 ${macdClass}">${h.macdHist.toFixed(2)}</td>
-                            
-                            <td class="p-4 text-gray-400">
-                                <div class="flex flex-col gap-1">
-                                    <span class="text-xs bg-gray-700/50 px-1 rounded w-max">L: ${h.macdLine.toFixed(2)}</span>
-                                    <span class="text-xs bg-gray-700/50 px-1 rounded w-max">S: ${h.macdSignal.toFixed(2)}</span>
-                                </div>
-                            </td>
+                        <td class="p-4 text-center">
+                             <div class="flex items-center justify-center gap-2 bg-gray-900/30 py-1.5 px-3 rounded-lg border border-gray-800/50">
+                                <i class="fa-solid ${volIcon}"></i>
+                                <span class="${volText} font-mono">${h.hacimOrani.toFixed(2)}x</span>
+                            </div>
+                        </td>
 
-                            <td class="p-4 text-gray-300">${h.fk.toFixed(2)}</td>
-                            <td class="p-4 text-gray-300">${h.pdDd.toFixed(2)}</td>
-                            <td class="p-4 ${buyumeClass} font-medium">%${h.buyumeOrani.toFixed(2)}</td>
-                            <td class="p-4 text-xs text-gray-500">${tarih}</td>
-                        </tr>
-                    `;
+                        <td class="p-4 font-mono ${macdClass}">${h.macdHist.toFixed(2)}</td>
+                        <td class="p-4 text-gray-500 text-[10px] font-mono">
+                            <div class="flex flex-col gap-1">
+                                <span class="bg-gray-800/50 px-1 rounded w-max">L: ${h.macdLine.toFixed(2)}</span>
+                                <span class="bg-gray-800/50 px-1 rounded w-max">S: ${h.macdSignal.toFixed(2)}</span>
+                            </div>
+                        </td>
+
+                        <td class="p-4 text-gray-400 font-mono">${h.fk.toFixed(2)}</td>
+                        <td class="p-4 text-gray-400 font-mono">${h.pdDd.toFixed(2)}</td>
+                        <td class="p-4 font-mono ${buyumeClass}">%${h.buyumeOrani.toFixed(2)}</td>
+                        <td class="p-4 text-xs text-gray-600 font-mono">${tarih}</td>
+                    </tr>`;
                 tbody.innerHTML += row;
             });
         }
 
-        function temizle() {
-            const inputs = document.querySelectorAll('input');
-            inputs.forEach(i => i.value = '');
-            verileriGetir();
+        function renderPortfolio() {
+            const tbody = document.getElementById('portfolioTablosu');
+            tbody.innerHTML = '';
+            let totalVal = 0, totalCost = 0;
+
+            MY_PORTFOLIO.forEach(item => {
+                const liveData = globalData.find(d => d.sembol === item.sembol || d.sembol.includes(item.sembol));
+                let currentPrice = liveData ? liveData.fiyat : 0;
+                let totalValue = currentPrice * item.adet;
+                let costValue = item.maliyet * item.adet;
+                let pnl = totalValue - costValue;
+                let pnlPercent = costValue > 0 ? (pnl / costValue) * 100 : 0;
+                
+                if(currentPrice > 0) {
+                    totalVal += totalValue; 
+                    totalCost += costValue;
+                }
+
+                const pnlClass = pnl >= 0 ? 'text-emerald-400' : 'text-red-400';
+                const bgClass = pnl >= 0 ? 'bg-emerald-500/10' : 'bg-red-500/10';
+                
+                let signalBadge = '<span class="text-gray-600">-</span>';
+                if(liveData) {
+                    if(liveData.rsi < 30 && liveData.adx > 20) signalBadge = '<span class="bg-emerald-500 text-black px-2 py-1 rounded text-xs font-bold animate-pulse">AL FIRSATI</span>';
+                    else if(liveData.rsi > 70) signalBadge = '<span class="bg-red-500 text-white px-2 py-1 rounded text-xs font-bold">SAT (Şişti)</span>';
+                    else if(liveData.hacimOrani > 2.0) signalBadge = '<span class="bg-orange-500 text-white px-2 py-1 rounded text-xs font-bold">HACİM PATLAMASI</span>';
+                }
+
+                const row = `
+                    <tr class="hover:bg-gray-800/40 border-b border-gray-800/30 ${bgClass}">
+                        <td class="p-4 font-bold text-white">${item.sembol}</td>
+                        <td class="p-4 text-right font-mono text-gray-300">${item.adet}</td>
+                        <td class="p-4 text-right font-mono text-gray-400">${item.maliyet.toFixed(2)} ₺</td>
+                        <td class="p-4 text-right font-mono text-blue-300 font-bold">${currentPrice > 0 ? currentPrice.toFixed(2) + ' ₺' : '...'}</td>
+                        <td class="p-4 text-right font-mono text-white font-bold">${totalValue.toFixed(2)} ₺</td>
+                        <td class="p-4 text-right font-mono ${pnlClass}">${pnl > 0 ? '+' : ''}${pnl.toFixed(2)} ₺</td>
+                        <td class="p-4 text-right font-mono ${pnlClass} font-bold">%${pnlPercent.toFixed(2)}</td>
+                        <td class="p-4 text-center">${signalBadge}</td>
+                    </tr>`;
+                tbody.innerHTML += row;
+            });
+
+            const totalPnL = totalVal - totalCost;
+            const totalPnLPercent = totalCost > 0 ? (totalPnL / totalCost) * 100 : 0;
+            document.getElementById('totalBalance').innerText = `₺${totalVal.toLocaleString('tr-TR', {minimumFractionDigits: 2})}`;
+            document.getElementById('stockCount').innerText = MY_PORTFOLIO.length;
+            const pnlEl = document.getElementById('totalPnL');
+            const pnlPerEl = document.getElementById('totalPnLPercent');
+            pnlEl.innerText = `${totalPnL > 0 ? '+' : ''}₺${totalPnL.toLocaleString('tr-TR', {minimumFractionDigits: 2})}`;
+            pnlPerEl.innerText = `%${totalPnLPercent.toFixed(2)}`;
+            if (totalPnL >= 0) { 
+                pnlEl.className = "text-3xl font-bold text-emerald-400 font-mono"; 
+                pnlPerEl.className = "text-sm font-bold font-mono text-emerald-500 bg-emerald-500/10 px-2 py-1 rounded"; 
+                document.getElementById('pnlIcon').className = "bg-emerald-500/20 p-3 rounded-full text-emerald-400";
+            } else { 
+                pnlEl.className = "text-3xl font-bold text-red-400 font-mono"; 
+                pnlPerEl.className = "text-sm font-bold font-mono text-red-500 bg-red-500/10 px-2 py-1 rounded"; 
+                document.getElementById('pnlIcon').className = "bg-red-500/20 p-3 rounded-full text-red-400";
+            }
         }
 
-        // Sayfa açılınca verileri çek
+        function addParam(params, name, id) { const el = document.getElementById(id); if(el && el.value) params.append(name, el.value); }
+        function val(id) { return document.getElementById(id) ? document.getElementById(id).value : null; }
+        function temizle() { document.querySelectorAll('input').forEach(i => i.value = ''); verileriGetir(); }
+
         window.onload = verileriGetir;
     </script>
 </body>

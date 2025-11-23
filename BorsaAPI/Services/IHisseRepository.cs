@@ -15,7 +15,9 @@ namespace BorsaAPI.Services
             decimal? maxBuyumeOrani, decimal? minBuyumeOrani,
             decimal? maxAdx, decimal? minAdx,
             decimal? maxDmp, decimal? minDmp,   
-            decimal? maxDmn, decimal? minDmn);
+            decimal? maxDmn, decimal? minDmn,
+            decimal? maxHacimOrani, decimal? minHacimOrani);
+            
         
     }
 }

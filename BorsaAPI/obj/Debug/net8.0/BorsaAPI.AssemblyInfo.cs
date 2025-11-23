@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("BorsaAPI")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+81fb5c7e82e96dfb13f0d9f72b76152f3b22b4eb")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+69e482ecd67397b3237af2f3d2b23f8df8b15f13")]
 [assembly: System.Reflection.AssemblyProductAttribute("BorsaAPI")]
 [assembly: System.Reflection.AssemblyTitleAttribute("BorsaAPI")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

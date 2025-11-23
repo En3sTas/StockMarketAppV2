@@ -24,7 +24,8 @@ namespace BorsaAPI.Services
                                              decimal? maxBuyumeOrani, decimal? minBuyumeOrani,
                                              decimal? maxAdx, decimal? minAdx,
                                              decimal? maxDmp, decimal? minDmp,
-                                             decimal? maxDmn, decimal? minDmn)
+                                             decimal? maxDmn, decimal? minDmn
+                                             ,decimal? maxHacimOrani, decimal? minHacimOrani)
         {
             List<Hisse> hisseListesi = new List<Hisse>();
 
@@ -157,6 +158,17 @@ namespace BorsaAPI.Services
                     sqlBuilder.Append(" AND dmn <= @maxDmn");
                     cmd.Parameters.AddWithValue("@maxDmn", maxDmn.Value);
                 } 
+                // Hacim Oranı Filtresi
+                if (minHacimOrani.HasValue)
+                {
+                    sqlBuilder.Append(" AND hacim_orani >= @minHacimOrani");
+                    cmd.Parameters.AddWithValue("@minHacimOrani", minHacimOrani.Value);
+                }
+                if (maxHacimOrani.HasValue)
+                {
+                    sqlBuilder.Append(" AND hacim_orani <= @maxHacimOrani");
+                    cmd.Parameters.AddWithValue("@maxHacimOrani", maxHacimOrani.Value);
+                }
 
                 // 3. SIRALAMA (Alfabetik)
                 sqlBuilder.Append(" ORDER BY sembol ASC");
@@ -191,6 +203,8 @@ namespace BorsaAPI.Services
                         hisse.Adx = reader.IsDBNull(reader.GetOrdinal("adx")) ? 0 : reader.GetDecimal(reader.GetOrdinal("adx"));
                         hisse.Dmp = reader.IsDBNull(reader.GetOrdinal("dmp")) ? 0 : reader.GetDecimal(reader.GetOrdinal("dmp"));
                         hisse.Dmn = reader.IsDBNull(reader.GetOrdinal("dmn")) ? 0 : reader.GetDecimal(reader.GetOrdinal("dmn"));
+
+                        hisse.HacimOrani = reader.IsDBNull(reader.GetOrdinal("hacim_orani")) ? 0 : reader.GetDecimal(reader.GetOrdinal("hacim_orani"));
                         hisse.BuyumeOrani = reader.IsDBNull(reader.GetOrdinal("buyume_orani")) ? 0 : reader.GetDecimal(reader.GetOrdinal("buyume_orani"));
                         
                         // Tarih

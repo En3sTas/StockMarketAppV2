@@ -5,7 +5,7 @@ from config import DB_AYARLARI
 def baglanti_kur():
     return psycopg2.connect(**DB_AYARLARI)
 
-def veriyi_kaydet(sembol, fiyat, sma50, sma200,fk,pd_dd,rsi,macd_line,macd_signal,macd_hist,buyume_orani, adx, dmp, dmn):
+def veriyi_kaydet(sembol, fiyat, sma50, sma200,fk,pd_dd,rsi,macd_line,macd_signal,macd_hist,buyume_orani, adx, dmp, dmn, hacim_orani):
     try:
         conn = baglanti_kur()
         cursor = conn.cursor()
@@ -14,8 +14,8 @@ def veriyi_kaydet(sembol, fiyat, sma50, sma200,fk,pd_dd,rsi,macd_line,macd_signa
         temiz_sembol = sembol.replace(".IS", "")
 
         sql = """
-        INSERT INTO Hisseler (sembol, fiyat, sma_50, sma_200, fk, pd_dd,rsi,macd_line,macd_signal,macd_hist,buyume_orani,adx,dmp,dmn, son_guncelleme)
-        VALUES (%s, %s, %s, %s, %s, %s,%s,%s,%s,%s,%s,%s,%s,%s, NOW())
+        INSERT INTO Hisseler (sembol, fiyat, sma_50, sma_200, fk, pd_dd,rsi,macd_line,macd_signal,macd_hist,buyume_orani,adx,dmp,dmn,hacim_orani, son_guncelleme)
+        VALUES (%s, %s, %s, %s, %s, %s,%s,%s,%s,%s,%s,%s,%s,%s,%s, NOW())
         ON CONFLICT (sembol) 
         DO UPDATE SET 
             fiyat = EXCLUDED.fiyat,
@@ -31,9 +31,10 @@ def veriyi_kaydet(sembol, fiyat, sma50, sma200,fk,pd_dd,rsi,macd_line,macd_signa
             adx = EXCLUDED.adx,
             dmp = EXCLUDED.dmp,
             dmn = EXCLUDED.dmn,
+            hacim_orani = EXCLUDED.hacim_orani,
             son_guncelleme = EXCLUDED.son_guncelleme;
         """
-        cursor.execute(sql, (temiz_sembol, fiyat, sma50, sma200,fk,pd_dd,rsi,macd_line,macd_signal,macd_hist,buyume_orani, adx, dmp, dmn))
+        cursor.execute(sql, (temiz_sembol, fiyat, sma50, sma200,fk,pd_dd,rsi,macd_line,macd_signal,macd_hist, adx, dmp, dmn, hacim_orani, buyume_orani))
         conn.commit()
         cursor.close()
         conn.close()

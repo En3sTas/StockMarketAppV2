@@ -48,7 +48,27 @@ def adx_dmi_hesapla(df):
     dmn = adx_df.iloc[-1]['DMN_14'] # Minus DI (-DI)
     
     return adx, dmp, dmn
-
+#----------HACİM ANALİZİ (YENİ METOD)-----------#
+def hacim_analizi(df):
+    """
+    Son 20 günün hacim ortalamasını (Volume SMA) hesaplar.
+    Mevcut hacmi buna böler. (Örn: 2.0 -> Hacim 2 katına çıkmış)
+    """
+    try:
+        # Son 20 günün ortalaması
+        vol_sma = df['Volume'].rolling(window=20).mean()
+        
+        current_vol = df['Volume'].iloc[-1]
+        avg_vol = vol_sma.iloc[-1]
+        
+        # Sıfıra bölünme hatasını önle
+        if avg_vol == 0 or pd.isna(avg_vol):
+            return 0
+            
+        oran = current_vol / avg_vol
+        return oran
+    except:
+        return 0
 #----------BÜYÜME ANALİZİ (YENİ)-----------#
 def buyume_orani_hesapla(hisse):
     """
@@ -60,17 +80,26 @@ def buyume_orani_hesapla(hisse):
         ceyrek_tablo = hisse.quarterly_income_stmt
         
         if not ceyrek_tablo.empty and 'Net Income' in ceyrek_tablo.index:
+            # --- DEBUG (HATA AYIKLAMA) KISMI ---
+            # Sütun başlıkları (Tarihler) neler?
+            tarihler = ceyrek_tablo.columns
+            print(f"\n--- {hisse.ticker} Bilanço Kontrolü ---")
+            print(f"En Yeni Tarih (iloc[0]): {tarihler[0]}")
+            print(f"Kıyaslanan Tarih (iloc[4]): {tarihler[4] if len(tarihler)>4 else 'Yok'}")
+            # -----------------------------------
+
             net_kar_serisi = ceyrek_tablo.loc['Net Income']
             
-            # Bize en az 5 veri lazım ki (0. indeks) ile (4. indeks yani geçen sene aynı çeyrek) kıyaslayalım
-            # yfinance bazen 4 veri döner, o zaman kıyaslayamayız.
             if len(net_kar_serisi) >= 5:
-                bu_ceyrek = net_kar_serisi.iloc[0]      # En son açıklanan (Örn: 2025 Q3)
-                gecen_sene_ceyrek = net_kar_serisi.iloc[4] # 1 sene öncesi (Örn: 2024 Q3)
+                bu_ceyrek = net_kar_serisi.iloc[0]
+                gecen_sene = net_kar_serisi.iloc[4]
+                
+                # Değerleri de görelim
+                print(f"Bu Çeyrek Kar: {bu_ceyrek}")
+                print(f"Geçen Sene Kar: {gecen_sene}")
 
-                if gecen_sene_ceyrek != 0:
-                    buyume = ((bu_ceyrek - gecen_sene_ceyrek) / abs(gecen_sene_ceyrek)) * 100
-                    return buyume
+                if gecen_sene != 0:
+                    return ((bu_ceyrek - gecen_sene) / abs(gecen_sene)) * 100
 
         # --- PLAN B: YILLIK (Veri yetersizse buraya düşer) ---
         yillik_tablo = hisse.income_stmt
@@ -101,6 +130,10 @@ def veri_cek_ve_hesapla(sembol):
         if df.empty: return None
 
         guncel_fiyat = df['Close'].iloc[-1]
+
+        df.dropna(subset=['High', 'Low', 'Close', 'Volume'], inplace=True)
+        if len(df) < 50: return None
+        
         
         # SMA Hesapları
         df['SMA_50'] = df['Close'].rolling(window=50).mean()
@@ -119,6 +152,9 @@ def veri_cek_ve_hesapla(sembol):
         #----------#
         adx, dmp, dmn = adx_dmi_hesapla(df)
         #---------#
+        hacim_orani = hacim_analizi(df)
+        #---------#
+
         buyume_orani = buyume_orani_hesapla(hisse)
         #----------#
         bilgi = hisse.info
@@ -137,6 +173,7 @@ def veri_cek_ve_hesapla(sembol):
         if pd.isna(adx): adx = 0
         if pd.isna(dmp): dmp = 0
         if pd.isna(dmn): dmn = 0
+        if pd.isna(hacim_orani): hacim_orani = 0
         if pd.isna(buyume_orani): buyume_orani = 0
         # Dönüşe rsi_degeri eklendi (6. eleman)
         return (
@@ -152,6 +189,7 @@ def veri_cek_ve_hesapla(sembol):
             float(adx), 
             float(dmp),  
             float(dmn),  
+            float(hacim_orani),
             float(buyume_orani)
             
         )
