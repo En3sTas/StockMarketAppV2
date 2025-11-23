@@ -1,5 +1,7 @@
+// HisseRepository.cs - FİNAL VERSİYON
 using BorsaAPI.Models;
 using Npgsql;
+using System.Text; // StringBuilder için gerekli
 
 namespace BorsaAPI.Services
 {
@@ -7,10 +9,10 @@ namespace BorsaAPI.Services
     {
         private readonly string _connectionString;
 
-        // Configuration'ı buraya inject ediyoruz (Constructor Injection)
         public HisseRepository(IConfiguration configuration)
         {
-            _connectionString = configuration.GetConnectionString("BorsaDb")?? string.Empty;
+            // Veritabanı bağlantı cümleciğini alıyoruz
+            _connectionString = configuration.GetConnectionString("BorsaDb") ?? string.Empty;
         }
 
         public List<Hisse> TumHisseleriGetir(decimal? maxFk, decimal? minFk,
@@ -26,106 +28,140 @@ namespace BorsaAPI.Services
             using (NpgsqlConnection conn = new NpgsqlConnection(_connectionString))
             {
                 conn.Open();
-                // F/K oranına göre sıralı getir
-                string sql = "SELECT * FROM Hisseler ORDER BY fk ASC";
+
+                // 1. DİNAMİK SQL İNŞASI
+                // "WHERE 1=1" taktiği: İlk koşul her zaman doğrudur, böylece sonraki her filtre için başına "AND" koyabiliriz.
+                StringBuilder sqlBuilder = new StringBuilder("SELECT * FROM Hisseler WHERE 1=1");
                 
-                using (NpgsqlCommand cmd = new NpgsqlCommand(sql, conn))
-                {   
-                    using (NpgsqlDataReader reader = cmd.ExecuteReader())
+                NpgsqlCommand cmd = new NpgsqlCommand();
+                cmd.Connection = conn;
+
+                // --- 2. KOŞULLARI EKLE (TÜM FİLTRELER) ---
+
+                // F/K Filtresi
+                if (minFk.HasValue)
+                {
+                    sqlBuilder.Append(" AND fk >= @minFk");
+                    cmd.Parameters.AddWithValue("@minFk", minFk.Value);
+                }
+                if (maxFk.HasValue)
+                {
+                    sqlBuilder.Append(" AND fk <= @maxFk");
+                    cmd.Parameters.AddWithValue("@maxFk", maxFk.Value);
+                }
+
+                // PD/DD Filtresi
+                if (minPdDd.HasValue)
+                {
+                    sqlBuilder.Append(" AND pd_dd >= @minPdDd");
+                    cmd.Parameters.AddWithValue("@minPdDd", minPdDd.Value);
+                }
+                if (maxPdDd.HasValue)
+                {
+                    sqlBuilder.Append(" AND pd_dd <= @maxPdDd");
+                    cmd.Parameters.AddWithValue("@maxPdDd", maxPdDd.Value);
+                }
+                
+                // RSI Filtresi
+                if (minRsi.HasValue)
+                {
+                    sqlBuilder.Append(" AND rsi >= @minRsi");
+                    cmd.Parameters.AddWithValue("@minRsi", minRsi.Value);
+                }
+                if (maxRsi.HasValue)
+                {
+                    sqlBuilder.Append(" AND rsi <= @maxRsi");
+                    cmd.Parameters.AddWithValue("@maxRsi", maxRsi.Value);
+                }
+
+                // MACD Histogram Filtresi (En sık kullanılan)
+                if (minMacdHist.HasValue)
+                {
+                    sqlBuilder.Append(" AND macd_hist >= @minMacdHist");
+                    cmd.Parameters.AddWithValue("@minMacdHist", minMacdHist.Value);
+                }
+                if (maxMacdHist.HasValue)
+                {
+                    sqlBuilder.Append(" AND macd_hist <= @maxMacdHist");
+                    cmd.Parameters.AddWithValue("@maxMacdHist", maxMacdHist.Value);
+                }
+
+                // MACD Line Filtresi
+                if (minMacdLine.HasValue)
+                {
+                    sqlBuilder.Append(" AND macd_line >= @minMacdLine");
+                    cmd.Parameters.AddWithValue("@minMacdLine", minMacdLine.Value);
+                }
+                if (maxMacdLine.HasValue)
+                {
+                    sqlBuilder.Append(" AND macd_line <= @maxMacdLine");
+                    cmd.Parameters.AddWithValue("@maxMacdLine", maxMacdLine.Value);
+                }
+
+                // MACD Signal Filtresi
+                if (minMacdSignal.HasValue)
+                {
+                    sqlBuilder.Append(" AND macd_signal >= @minMacdSignal");
+                    cmd.Parameters.AddWithValue("@minMacdSignal", minMacdSignal.Value);
+                }
+                if (maxMacdSignal.HasValue)
+                {
+                    sqlBuilder.Append(" AND macd_signal <= @maxMacdSignal");
+                    cmd.Parameters.AddWithValue("@maxMacdSignal", maxMacdSignal.Value);
+                }
+
+                // Büyüme Oranı Filtresi
+                if (minBuyumeOrani.HasValue)
+                {
+                    sqlBuilder.Append(" AND buyume_orani >= @minBuyumeOrani");
+                    cmd.Parameters.AddWithValue("@minBuyumeOrani", minBuyumeOrani.Value);
+                }
+                if (maxBuyumeOrani.HasValue)
+                {
+                    sqlBuilder.Append(" AND buyume_orani <= @maxBuyumeOrani");
+                    cmd.Parameters.AddWithValue("@maxBuyumeOrani", maxBuyumeOrani.Value);
+                }
+
+                // 3. SIRALAMA (Alfabetik)
+                sqlBuilder.Append(" ORDER BY sembol ASC");
+
+                // 4. SORGUEYU ÇALIŞTIR
+                cmd.CommandText = sqlBuilder.ToString();
+
+                using (NpgsqlDataReader reader = cmd.ExecuteReader())
+                {
+                    while (reader.Read())
                     {
-                        while (reader.Read())
-                        {
-                            Hisse hisse = new Hisse();
-                            hisse.Id = reader.GetInt32(reader.GetOrdinal("id"));
-                            hisse.Sembol = reader.GetString(reader.GetOrdinal("sembol"));
-                          
-                            hisse.Fiyat = reader.GetDecimal(reader.GetOrdinal("fiyat"));
-                            
-                            hisse.Sma50 = reader.GetDecimal(reader.GetOrdinal("sma_50"));
-                            hisse.Sma200 = reader.GetDecimal(reader.GetOrdinal("sma_200"));
-                           
-                            hisse.Rsi= reader.IsDBNull(reader.GetOrdinal("rsi")) ? 0 : reader.GetDecimal(reader.GetOrdinal("rsi"));
-                            
-                            hisse.Fk = reader.IsDBNull(reader.GetOrdinal("fk")) ? 0 : reader.GetDecimal(reader.GetOrdinal("fk"));
-                            hisse.PdDd = reader.IsDBNull(reader.GetOrdinal("pd_dd")) ? 0 : reader.GetDecimal(reader.GetOrdinal("pd_dd"));
-                            
-                            hisse.MacdLine = reader.IsDBNull(reader.GetOrdinal("macd_line")) ? 0 : reader.GetDecimal(reader.GetOrdinal("macd_line"));
-                            hisse.MacdSignal = reader.IsDBNull(reader.GetOrdinal("macd_signal")) ? 0 : reader.GetDecimal(reader.GetOrdinal("macd_signal"));
-                            hisse.MacdHist = reader.IsDBNull(reader.GetOrdinal("macd_hist")) ? 0 : reader.GetDecimal(reader.GetOrdinal("macd_hist"));
-                            
-                            hisse.BuyumeOrani = reader.IsDBNull(reader.GetOrdinal("buyume_orani")) ? 0 : reader.GetDecimal(reader.GetOrdinal("buyume_orani"));
+                        Hisse hisse = new Hisse();
+                        
+                        // ID ve Sembol
+                        hisse.Id = reader.GetInt32(reader.GetOrdinal("id"));
+                        hisse.Sembol = reader.GetString(reader.GetOrdinal("sembol"));
+                        
+                        // Temel Veriler
+                        hisse.Fiyat = reader.GetDecimal(reader.GetOrdinal("fiyat"));
+                        hisse.Sma50 = reader.GetDecimal(reader.GetOrdinal("sma_50"));
+                        hisse.Sma200 = reader.GetDecimal(reader.GetOrdinal("sma_200"));
+                        
+                        // İndikatörler (Null kontrolü - Veritabanında boşsa 0 ata)
+                        hisse.Rsi = reader.IsDBNull(reader.GetOrdinal("rsi")) ? 0 : reader.GetDecimal(reader.GetOrdinal("rsi"));
+                        hisse.Fk = reader.IsDBNull(reader.GetOrdinal("fk")) ? 0 : reader.GetDecimal(reader.GetOrdinal("fk"));
+                        hisse.PdDd = reader.IsDBNull(reader.GetOrdinal("pd_dd")) ? 0 : reader.GetDecimal(reader.GetOrdinal("pd_dd"));
+                        
+                        hisse.MacdLine = reader.IsDBNull(reader.GetOrdinal("macd_line")) ? 0 : reader.GetDecimal(reader.GetOrdinal("macd_line"));
+                        hisse.MacdSignal = reader.IsDBNull(reader.GetOrdinal("macd_signal")) ? 0 : reader.GetDecimal(reader.GetOrdinal("macd_signal"));
+                        hisse.MacdHist = reader.IsDBNull(reader.GetOrdinal("macd_hist")) ? 0 : reader.GetDecimal(reader.GetOrdinal("macd_hist"));
+                        
+                        hisse.BuyumeOrani = reader.IsDBNull(reader.GetOrdinal("buyume_orani")) ? 0 : reader.GetDecimal(reader.GetOrdinal("buyume_orani"));
+                        
+                        // Tarih
+                        hisse.SonGuncelleme = reader.GetDateTime(reader.GetOrdinal("son_guncelleme"));
 
-                            hisse.SonGuncelleme = reader.GetDateTime(reader.GetOrdinal("son_guncelleme"));
-
-                            hisseListesi.Add(hisse);
-                        }
+                        hisseListesi.Add(hisse);
                     }
                 }
             }
-            if (minFk.HasValue)
-            {
-                hisseListesi= hisseListesi.Where(h=> h.Fk >= minFk.Value).ToList();
-            }
-            if (maxFk.HasValue)
-            {
-                hisseListesi= hisseListesi.Where(h=> h.Fk <= maxFk.Value).ToList();
-            }
-
-            if (minPdDd.HasValue)
-            {
-                hisseListesi= hisseListesi.Where(h=> h.PdDd >= minPdDd.Value).ToList();
-            }
-            if (maxPdDd.HasValue)
-            {
-                hisseListesi= hisseListesi.Where(h=> h.PdDd <= maxPdDd.Value).ToList();
-            }
-            //RSI
-            if (minRsi.HasValue)
-            {
-                hisseListesi= hisseListesi.Where(h=> h.Rsi >= minRsi.Value).ToList();
-            }
-            if (maxRsi.HasValue)
-            {
-                hisseListesi= hisseListesi.Where(h=> h.Rsi <= maxRsi.Value).ToList();
-            }
-            //MACD
-            if (minMacdLine.HasValue)
-            {
-                hisseListesi= hisseListesi.Where(h=> h.MacdLine >= minMacdLine.Value).ToList();
-            }
-            if (maxMacdLine.HasValue)
-            {
-                hisseListesi= hisseListesi.Where(h=> h.MacdLine <= maxMacdLine.Value).ToList();
-            }
-            if (minMacdSignal.HasValue)
-            {
-                hisseListesi= hisseListesi.Where(h=> h.MacdSignal >= minMacdSignal.Value).ToList();
-            }
-            if (maxMacdSignal.HasValue)
-            {
-                hisseListesi= hisseListesi.Where(h=> h.MacdSignal <= maxMacdSignal.Value).ToList();
-            }
-            if (minMacdHist.HasValue)
-            {
-                hisseListesi= hisseListesi.Where(h=> h.MacdHist >= minMacdHist.Value).ToList();
-            }
-            if (maxMacdHist.HasValue)
-            {
-                hisseListesi= hisseListesi.Where(h=> h.MacdHist <= maxMacdHist.Value).ToList();
-            }   
-            //Büyüme Oranı
-            if (minBuyumeOrani.HasValue)
-            {
-                hisseListesi= hisseListesi.Where(h=> h.BuyumeOrani >= minBuyumeOrani.Value).ToList();
-            }
-            if (maxBuyumeOrani.HasValue)
-            {
-                hisseListesi= hisseListesi.Where(h=> h.BuyumeOrani <= maxBuyumeOrani.Value).ToList();
-            }
-
             return hisseListesi;
-
-        
         }
     }
 }
