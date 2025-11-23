@@ -14,6 +14,9 @@ namespace BorsaAPI.Models
         public decimal MacdSignal { get; set; }
         public decimal MacdHist { get; set; }
         public decimal BuyumeOrani { get; set; }
+        public decimal Adx { get; set; }
+        public decimal Dmp { get; set; }
+        public decimal Dmn { get; set; }
         public DateTime SonGuncelleme { get; set; }
     }
 }

@@ -137,6 +137,7 @@
                                 <th class="p-4 font-semibold text-blue-300">SMA 50</th>
                                 <th class="p-4 font-semibold text-yellow-300">SMA 200</th>
                                 <th class="p-4 font-semibold">RSI (14)</th>
+                                <th class="p-4 font-semibold">TREND (ADX/DI)</th>
                                 <th class="p-4 font-semibold">MACD Hist</th>
                                 <th class="p-4 font-semibold">MACD Sinyal</th>
                                 <th class="p-4 font-semibold">F/K</th>
@@ -255,34 +256,47 @@
                 }
 
                 const row = `
-                    <tr class="hover:bg-gray-800 transition duration-150 border-b border-gray-800/50">
-                        <td class="p-4 font-bold text-white">${h.sembol}</td>
-                        <td class="p-4 text-blue-300 font-medium">${h.fiyat.toFixed(2)} ₺</td>
-                        
-                        <td class="p-4 ${h.fiyat > h.sma50 ? 'text-green-300 font-semibold' : 'text-gray-500'}">
-                            ${h.sma50.toFixed(2)}
-                        </td>
+                        <tr class="hover:bg-gray-800 transition duration-150 border-b border-gray-800/50">
+                            <td class="p-4 font-bold text-white">${h.sembol}</td>
+                            <td class="p-4 text-blue-300 font-medium">${h.fiyat.toFixed(2)} ₺</td>
+                            
+                            <td class="p-4 ${h.fiyat > h.sma50 ? 'text-green-300 font-semibold' : 'text-gray-500'}">
+                                ${h.sma50.toFixed(2)}
+                            </td>
 
-                        <td class="p-4 ${h.fiyat > h.sma200 ? 'text-yellow-300 font-semibold' : 'text-gray-500'}">
-                            ${h.sma200.toFixed(2)}
-                        </td>
+                            <td class="p-4 ${h.fiyat > h.sma200 ? 'text-yellow-300 font-semibold' : 'text-gray-500'}">
+                                ${h.sma200.toFixed(2)}
+                            </td>
 
-                        <td class="p-4 ${rsiClass}">${h.rsi.toFixed(2)}</td>
-                        <td class="p-4 ${macdClass}">${h.macdHist.toFixed(2)}</td>
-                        
-                        <td class="p-4 text-gray-400">
-                            <div class="flex flex-col gap-1">
-                                <span class="text-xs bg-gray-700/50 px-1 rounded w-max">L: ${h.macdLine.toFixed(2)}</span>
-                                <span class="text-xs bg-gray-700/50 px-1 rounded w-max">S: ${h.macdSignal.toFixed(2)}</span>
-                            </div>
-                        </td>
+                            <td class="p-4 ${rsiClass}">${h.rsi.toFixed(2)}</td>
+                            
+                            <td class="p-4">
+                                <div class="flex flex-col">
+                                    <span class="font-bold text-sm ${h.adx > 25 ? 'text-white' : 'text-gray-500'}">
+                                        ADX: ${h.adx.toFixed(2)}
+                                    </span>
+                                    <div class="text-xs mt-1 flex gap-2 font-mono">
+                                        <span class="text-green-400" title="+DI">+: ${h.dmp.toFixed(1)}</span>
+                                        <span class="text-red-400" title="-DI">-: ${h.dmn.toFixed(1)}</span>
+                                    </div>
+                                </div>
+                            </td>
 
-                        <td class="p-4 text-gray-300">${h.fk.toFixed(2)}</td>
-                        <td class="p-4 text-gray-300">${h.pdDd.toFixed(2)}</td>
-                        <td class="p-4 ${buyumeClass} font-medium">%${h.buyumeOrani.toFixed(2)}</td>
-                        <td class="p-4 text-xs text-gray-500">${tarih}</td>
-                    </tr>
-                          `;
+                            <td class="p-4 ${macdClass}">${h.macdHist.toFixed(2)}</td>
+                            
+                            <td class="p-4 text-gray-400">
+                                <div class="flex flex-col gap-1">
+                                    <span class="text-xs bg-gray-700/50 px-1 rounded w-max">L: ${h.macdLine.toFixed(2)}</span>
+                                    <span class="text-xs bg-gray-700/50 px-1 rounded w-max">S: ${h.macdSignal.toFixed(2)}</span>
+                                </div>
+                            </td>
+
+                            <td class="p-4 text-gray-300">${h.fk.toFixed(2)}</td>
+                            <td class="p-4 text-gray-300">${h.pdDd.toFixed(2)}</td>
+                            <td class="p-4 ${buyumeClass} font-medium">%${h.buyumeOrani.toFixed(2)}</td>
+                            <td class="p-4 text-xs text-gray-500">${tarih}</td>
+                        </tr>
+                    `;
                 tbody.innerHTML += row;
             });
         }

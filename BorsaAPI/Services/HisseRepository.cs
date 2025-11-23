@@ -21,7 +21,10 @@ namespace BorsaAPI.Services
                                              decimal? maxMacdLine, decimal? minMacdLine,
                                              decimal? maxMacdSignal, decimal? minMacdSignal,
                                              decimal? maxMacdHist, decimal? minMacdHist,
-                                             decimal? maxBuyumeOrani, decimal? minBuyumeOrani)
+                                             decimal? maxBuyumeOrani, decimal? minBuyumeOrani,
+                                             decimal? maxAdx, decimal? minAdx,
+                                             decimal? maxDmp, decimal? minDmp,
+                                             decimal? maxDmn, decimal? minDmn)
         {
             List<Hisse> hisseListesi = new List<Hisse>();
 
@@ -121,6 +124,39 @@ namespace BorsaAPI.Services
                     sqlBuilder.Append(" AND buyume_orani <= @maxBuyumeOrani");
                     cmd.Parameters.AddWithValue("@maxBuyumeOrani", maxBuyumeOrani.Value);
                 }
+                // ADX Filtresi
+                if (minAdx.HasValue)
+                {
+                    sqlBuilder.Append(" AND adx >= @minAdx");
+                    cmd.Parameters.AddWithValue("@minAdx", minAdx.Value);
+                }   
+                if (maxAdx.HasValue)
+                {
+                    sqlBuilder.Append(" AND adx <= @maxAdx");
+                    cmd.Parameters.AddWithValue("@maxAdx", maxAdx.Value);
+                }
+                // DMP Filtresi
+                if (minDmp.HasValue)
+                {
+                    sqlBuilder.Append(" AND dmp >= @minDmp");
+                    cmd.Parameters.AddWithValue("@minDmp", minDmp.Value);
+                }
+                if (maxDmp.HasValue)
+                {
+                    sqlBuilder.Append(" AND dmp <= @maxDmp");
+                    cmd.Parameters.AddWithValue("@maxDmp", maxDmp.Value);
+                }
+                // DMN Filtresi
+                if (minDmn.HasValue)
+                {
+                    sqlBuilder.Append(" AND dmn >= @minDmn");
+                    cmd.Parameters.AddWithValue("@minDmn", minDmn.Value);
+                }
+                if (maxDmn.HasValue)
+                {
+                    sqlBuilder.Append(" AND dmn <= @maxDmn");
+                    cmd.Parameters.AddWithValue("@maxDmn", maxDmn.Value);
+                } 
 
                 // 3. SIRALAMA (Alfabetik)
                 sqlBuilder.Append(" ORDER BY sembol ASC");
@@ -152,6 +188,9 @@ namespace BorsaAPI.Services
                         hisse.MacdSignal = reader.IsDBNull(reader.GetOrdinal("macd_signal")) ? 0 : reader.GetDecimal(reader.GetOrdinal("macd_signal"));
                         hisse.MacdHist = reader.IsDBNull(reader.GetOrdinal("macd_hist")) ? 0 : reader.GetDecimal(reader.GetOrdinal("macd_hist"));
                         
+                        hisse.Adx = reader.IsDBNull(reader.GetOrdinal("adx")) ? 0 : reader.GetDecimal(reader.GetOrdinal("adx"));
+                        hisse.Dmp = reader.IsDBNull(reader.GetOrdinal("dmp")) ? 0 : reader.GetDecimal(reader.GetOrdinal("dmp"));
+                        hisse.Dmn = reader.IsDBNull(reader.GetOrdinal("dmn")) ? 0 : reader.GetDecimal(reader.GetOrdinal("dmn"));
                         hisse.BuyumeOrani = reader.IsDBNull(reader.GetOrdinal("buyume_orani")) ? 0 : reader.GetDecimal(reader.GetOrdinal("buyume_orani"));
                         
                         // Tarih

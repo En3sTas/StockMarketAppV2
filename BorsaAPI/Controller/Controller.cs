@@ -30,8 +30,13 @@ namespace BorsaAPI.Controllers
             [FromQuery] decimal? maxMacdHist,
             [FromQuery] decimal? minMacdHist,
             [FromQuery] decimal? maxBuyumeOrani,
-            [FromQuery] decimal? minBuyumeOrani
-            )
+            [FromQuery] decimal? minBuyumeOrani,
+            [FromQuery] decimal? maxAdx,
+            [FromQuery] decimal? minAdx,
+            [FromQuery] decimal? maxDmp,
+            [FromQuery] decimal? minDmp,
+            [FromQuery] decimal? maxDmn,
+            [FromQuery] decimal? minDmn)
         {
             try
             {
@@ -42,7 +47,10 @@ namespace BorsaAPI.Controllers
                                                                  maxMacdLine, minMacdLine,
                                                                  maxMacdSignal, minMacdSignal,
                                                                  maxMacdHist, minMacdHist,
-                                                                 maxBuyumeOrani,minBuyumeOrani);
+                                                                 maxBuyumeOrani,minBuyumeOrani,
+                                                                 maxAdx, minAdx,
+                                                                 maxDmp, minDmp,
+                                                                 maxDmn, minDmn);
                 return Ok(veriler);
             }
             catch (Exception ex)

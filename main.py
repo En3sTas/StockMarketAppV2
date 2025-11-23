@@ -12,10 +12,10 @@ def hisse_islemcisi(sembol):
         sonuc = analiz.veri_cek_ve_hesapla(sembol)
         if sonuc:
             # Tuple'ı aç (unpack)
-            fiyat, sma50, sma200, fk, pd_dd, rsi, macd_line, macd_signal, macd_hist, buyume_orani = sonuc
+            fiyat, sma50, sma200, fk, pd_dd, rsi, macd_line, macd_signal, macd_hist, adx, dmp, dmn, buyume_orani = sonuc
             
             # Veritabanına yaz
-            database.veriyi_kaydet(sembol, fiyat, sma50, sma200, fk, pd_dd, rsi, macd_line, macd_signal, macd_hist, buyume_orani)
+            database.veriyi_kaydet(sembol, fiyat, sma50, sma200, fk, pd_dd, rsi, macd_line, macd_signal, macd_hist, adx, dmp, dmn, buyume_orani)
         else:
             print(f"⚠️ {sembol} verisi boş döndü.")
     except Exception as e:

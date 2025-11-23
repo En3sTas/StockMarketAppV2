@@ -1,10 +1,12 @@
 import yfinance as yf
 import pandas as pd
+import pandas_ta as ta
+
 #----------RSI-----------#
 def rsi_hesapla(df, periyot=14):
     """Basit RSI Hesaplaması"""
     delta = df['Close'].diff()
-    gain = (delta.where(delta > 0, 0)).fillna(0)
+    gain = (delta.where(delta > 0, 0)).fillna(0)        
     loss = (-delta.where(delta < 0, 0)).fillna(0)
 
     avg_gain = gain.rolling(window=periyot).mean()
@@ -28,6 +30,25 @@ def macd_hesapla(df):
     
     return macd_line, macd_signal, macd_hist
 #------------------------#
+
+#----------ADX ve DMI Hesaplaması (YENİ)-----------#
+def adx_dmi_hesapla(df):
+    """ADX, +DI (DMP) ve -DI (DMN) Hesaplar"""
+    # pandas_ta ile hesaplama (Standart 14 periyot)
+    # Bu fonksiyon bize bir DataFrame döner: ADX_14, DMP_14, DMN_14 sütunları olur
+    adx_df = df.ta.adx(high=df['High'], low=df['Low'], close=df['Close'], length=14)
+    
+    if adx_df is None or adx_df.empty:
+        return 0, 0, 0
+
+    # Sütun isimleri bazen kütüphane sürümüne göre değişebilir ama genelde şöyledir:
+    # ADX_14, DMP_14, DMN_14
+    adx = adx_df.iloc[-1]['ADX_14']
+    dmp = adx_df.iloc[-1]['DMP_14'] # Plus DI (+DI)
+    dmn = adx_df.iloc[-1]['DMN_14'] # Minus DI (-DI)
+    
+    return adx, dmp, dmn
+
 #----------BÜYÜME ANALİZİ (YENİ)-----------#
 def buyume_orani_hesapla(hisse):
     """
@@ -70,6 +91,8 @@ def buyume_orani_hesapla(hisse):
         # Hata olursa sessizce 0 dön
         return 0
     #-----------------------------------------#
+   
+    
 def veri_cek_ve_hesapla(sembol):
     try:
         hisse = yf.Ticker(sembol)
@@ -94,6 +117,8 @@ def veri_cek_ve_hesapla(sembol):
         macd_signal = macd_s.iloc[-1]
         macd_hist = macd_h.iloc[-1]
         #----------#
+        adx, dmp, dmn = adx_dmi_hesapla(df)
+        #---------#
         buyume_orani = buyume_orani_hesapla(hisse)
         #----------#
         bilgi = hisse.info
@@ -109,6 +134,9 @@ def veri_cek_ve_hesapla(sembol):
         if pd.isna(macd_line): macd_line = 0
         if pd.isna(macd_signal): macd_signal = 0
         if pd.isna(macd_hist): macd_hist = 0
+        if pd.isna(adx): adx = 0
+        if pd.isna(dmp): dmp = 0
+        if pd.isna(dmn): dmn = 0
         if pd.isna(buyume_orani): buyume_orani = 0
         # Dönüşe rsi_degeri eklendi (6. eleman)
         return (
@@ -121,7 +149,11 @@ def veri_cek_ve_hesapla(sembol):
             float(macd_line), 
             float(macd_signal), 
             float(macd_hist),
+            float(adx), 
+            float(dmp),  
+            float(dmn),  
             float(buyume_orani)
+            
         )
 
     except Exception as e:
