@@ -4,17 +4,26 @@ import pandas_ta as ta
 
 #----------RSI-----------#
 def rsi_hesapla(df, periyot=14):
-    """Basit RSI Hesaplaması"""
-    delta = df['Close'].diff()
-    gain = (delta.where(delta > 0, 0)).fillna(0)        
-    loss = (-delta.where(delta < 0, 0)).fillna(0)
 
+    delta = df['Close'].diff()
+
+    gain = delta.where(delta > 0, 0)
+    loss = -delta.where(delta < 0, 0)
+
+    # İlk ortalama için SMA
     avg_gain = gain.rolling(window=periyot).mean()
     avg_loss = loss.rolling(window=periyot).mean()
+    
+    # RMA (Wilder smoothing)
+    for i in range(periyot, len(df)):
+        avg_gain.iat[i] = (avg_gain.iat[i-1] * (periyot - 1) + gain.iat[i]) / periyot
+        avg_loss.iat[i] = (avg_loss.iat[i-1] * (periyot - 1) + loss.iat[i]) / periyot
 
     rs = avg_gain / avg_loss
     rsi = 100 - (100 / (1 + rs))
+
     return rsi
+
 #----------MACD-----------#
 def macd_hesapla(df):
     """MACD (12, 26, 9) Hesaplaması"""
