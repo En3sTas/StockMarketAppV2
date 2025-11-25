@@ -29,8 +29,7 @@ namespace BorsaAPI.Controllers
             [FromQuery] decimal? minMacdSignal, 
             [FromQuery] decimal? maxMacdHist,
             [FromQuery] decimal? minMacdHist,
-            [FromQuery] decimal? maxBuyumeOrani,
-            [FromQuery] decimal? minBuyumeOrani,
+            
             [FromQuery] decimal? maxAdx,
             [FromQuery] decimal? minAdx,
             [FromQuery] decimal? maxDmp,
@@ -49,7 +48,7 @@ namespace BorsaAPI.Controllers
                                                                  maxMacdLine, minMacdLine,
                                                                  maxMacdSignal, minMacdSignal,
                                                                  maxMacdHist, minMacdHist,
-                                                                 maxBuyumeOrani,minBuyumeOrani,
+                                                                 
                                                                  maxAdx, minAdx,
                                                                  maxDmp, minDmp,
                                                                  maxDmn, minDmn,

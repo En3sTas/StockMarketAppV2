@@ -21,7 +21,7 @@ namespace BorsaAPI.Services
                                              decimal? maxMacdLine, decimal? minMacdLine,
                                              decimal? maxMacdSignal, decimal? minMacdSignal,
                                              decimal? maxMacdHist, decimal? minMacdHist,
-                                             decimal? maxBuyumeOrani, decimal? minBuyumeOrani,
+                                             
                                              decimal? maxAdx, decimal? minAdx,
                                              decimal? maxDmp, decimal? minDmp,
                                              decimal? maxDmn, decimal? minDmn
@@ -114,17 +114,7 @@ namespace BorsaAPI.Services
                     cmd.Parameters.AddWithValue("@maxMacdSignal", maxMacdSignal.Value);
                 }
 
-                // Büyüme Oranı Filtresi
-                if (minBuyumeOrani.HasValue)
-                {
-                    sqlBuilder.Append(" AND buyume_orani >= @minBuyumeOrani");
-                    cmd.Parameters.AddWithValue("@minBuyumeOrani", minBuyumeOrani.Value);
-                }
-                if (maxBuyumeOrani.HasValue)
-                {
-                    sqlBuilder.Append(" AND buyume_orani <= @maxBuyumeOrani");
-                    cmd.Parameters.AddWithValue("@maxBuyumeOrani", maxBuyumeOrani.Value);
-                }
+                
                 // ADX Filtresi
                 if (minAdx.HasValue)
                 {
@@ -205,7 +195,7 @@ namespace BorsaAPI.Services
                         hisse.Dmn = reader.IsDBNull(reader.GetOrdinal("dmn")) ? 0 : reader.GetDecimal(reader.GetOrdinal("dmn"));
 
                         hisse.HacimOrani = reader.IsDBNull(reader.GetOrdinal("hacim_orani")) ? 0 : reader.GetDecimal(reader.GetOrdinal("hacim_orani"));
-                        hisse.BuyumeOrani = reader.IsDBNull(reader.GetOrdinal("buyume_orani")) ? 0 : reader.GetDecimal(reader.GetOrdinal("buyume_orani"));
+                        
                         
                         // Tarih
                         hisse.SonGuncelleme = reader.GetDateTime(reader.GetOrdinal("son_guncelleme"));

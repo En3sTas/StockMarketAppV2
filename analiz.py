@@ -69,57 +69,7 @@ def hacim_analizi(df):
         return oran
     except:
         return 0
-#----------BÜYÜME ANALİZİ (YENİ)-----------#
-def buyume_orani_hesapla(hisse):
-    """
-    Önce ÇEYREKLİK (Quarterly) büyümeye bakar (Son Çeyrek vs Geçen Sene Aynı Çeyrek).
-    Veri yoksa YILLIK (Annual) büyümeye döner.
-    """
-    try:
-        # --- PLAN A: ÇEYREKLİK (Son Çeyrek vs 1 Yıl Önceki Çeyrek) ---
-        ceyrek_tablo = hisse.quarterly_income_stmt
-        
-        if not ceyrek_tablo.empty and 'Net Income' in ceyrek_tablo.index:
-            # --- DEBUG (HATA AYIKLAMA) KISMI ---
-            # Sütun başlıkları (Tarihler) neler?
-            tarihler = ceyrek_tablo.columns
-            print(f"\n--- {hisse.ticker} Bilanço Kontrolü ---")
-            print(f"En Yeni Tarih (iloc[0]): {tarihler[0]}")
-            print(f"Kıyaslanan Tarih (iloc[4]): {tarihler[4] if len(tarihler)>4 else 'Yok'}")
-            # -----------------------------------
 
-            net_kar_serisi = ceyrek_tablo.loc['Net Income']
-            
-            if len(net_kar_serisi) >= 5:
-                bu_ceyrek = net_kar_serisi.iloc[0]
-                gecen_sene = net_kar_serisi.iloc[4]
-                
-                # Değerleri de görelim
-                print(f"Bu Çeyrek Kar: {bu_ceyrek}")
-                print(f"Geçen Sene Kar: {gecen_sene}")
-
-                if gecen_sene != 0:
-                    return ((bu_ceyrek - gecen_sene) / abs(gecen_sene)) * 100
-
-        # --- PLAN B: YILLIK (Veri yetersizse buraya düşer) ---
-        yillik_tablo = hisse.income_stmt
-        if not yillik_tablo.empty and 'Net Income' in yillik_tablo.index:
-            net_kar_serisi = yillik_tablo.loc['Net Income']
-            
-            if len(net_kar_serisi) >= 2:
-                bu_sene = net_kar_serisi.iloc[0]
-                gecen_sene = net_kar_serisi.iloc[1]
-
-                if gecen_sene != 0:
-                    buyume = ((bu_sene - gecen_sene) / abs(gecen_sene)) * 100
-                    return buyume
-
-        return 0
-
-    except Exception as e:
-        # Hata olursa sessizce 0 dön
-        return 0
-    #-----------------------------------------#
    
     
 def veri_cek_ve_hesapla(sembol):
@@ -155,7 +105,7 @@ def veri_cek_ve_hesapla(sembol):
         hacim_orani = hacim_analizi(df)
         #---------#
 
-        buyume_orani = buyume_orani_hesapla(hisse)
+        
         #----------#
         bilgi = hisse.info
         fk_orani = bilgi.get('trailingPE', 0)
@@ -174,7 +124,7 @@ def veri_cek_ve_hesapla(sembol):
         if pd.isna(dmp): dmp = 0
         if pd.isna(dmn): dmn = 0
         if pd.isna(hacim_orani): hacim_orani = 0
-        if pd.isna(buyume_orani): buyume_orani = 0
+       
         # Dönüşe rsi_degeri eklendi (6. eleman)
         return (
             float(guncel_fiyat), 
@@ -190,7 +140,7 @@ def veri_cek_ve_hesapla(sembol):
             float(dmp),  
             float(dmn),  
             float(hacim_orani),
-            float(buyume_orani)
+            
             
         )
 
