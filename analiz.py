@@ -2,23 +2,19 @@ from tvDatafeed import TvDatafeed, Interval
 import yfinance as yf
 import pandas as pd
 import pandas_ta as ta
-import time  # Bekleme süresi için eklendi
+import time
 
-# ----------------------------------------------------------------
-# 1. BAĞLANTILAR
-# ----------------------------------------------------------------
-print("🔗 Veri sağlayıcılarına bağlanılıyor...")
-# TradingView bazen ilk bağlantıda da hata verebilir, onu da korumaya alalım.
+print("🔗 Connecting to data providers...")
+
 try:
     tv = TvDatafeed()
-    print("✅ Bağlantı başarılı.")
+    print("✅ Connection successful.")
 except:
-    print("⚠️ İlk bağlantı hatası, tekrar deneniyor...")
+    print("⚠️ Initial connection error, retrying...")
     time.sleep(3)
     tv = TvDatafeed()
 
 def hacim_analizi(df):
-    """Hacim artış oranını hesaplar"""
     try:
         vol_sma = df['Volume'].rolling(window=20).mean()
         current_vol = df['Volume'].iloc[-1]
@@ -30,35 +26,28 @@ def hacim_analizi(df):
         return 0.0
 
 def safe_float(val):
-    """API için veri güvenliği sağlar"""
     if pd.isna(val) or val is None: return 0.0
     return float(val)
 
 def tv_veri_cek_retry(symbol, retries=3):
-    """
-    429 Hatası (Çok Fazla İstek) gelirse bekleyip tekrar dener.
-    """
     for i in range(retries):
         try:
-            # Veri çekmeyi dene
             df = tv.get_hist(symbol=symbol, exchange='BIST', interval=Interval.in_daily, n_bars=5000)
             return df
         except Exception as e:
             hata_mesaji = str(e)
             if "429" in hata_mesaji:
-                wait_time = (i + 1) * 5  # İlk hatada 5sn, ikincide 10sn, üçüncüde 15sn bekle
-                print(f"⚠️ Hız Sınırı (429) - {symbol} için {wait_time} sn bekleniyor...")
+                wait_time = (i + 1) * 5
+                print(f"⚠️ Rate limit (429) - waiting {wait_time} seconds for {symbol}...")
                 time.sleep(wait_time)
-                # Döngü başa döner ve tekrar dener
             else:
-                # Başka bir hataysa (sembol yoksa vs) direkt hata ver
-                print(f"❌ Veri Hatası ({symbol}): {e}")
+                print(f"❌ Data Error ({symbol}): {e}")
                 return None
     return None
 
 def veri_cek_ve_hesapla(sembol):
     try:
-        # Sembol Temizliği
+      
         sembol = sembol.upper().strip()
         tv_symbol = sembol.replace(".IS", "")
         
@@ -67,25 +56,18 @@ def veri_cek_ve_hesapla(sembol):
         else:
             yf_symbol = sembol
 
-        # ---------------------------------------------------------
-        # A. TEKNİK ANALİZ VERİSİ (TRADINGVIEW - RETRY MEKANİZMALI)
-        # ---------------------------------------------------------
-        # Eski tv.get_hist yerine korumalı fonksiyonu kullanıyoruz:
+       
         df = tv_veri_cek_retry(tv_symbol)
         
         if df is None or df.empty:
             return None
 
-        # Sütun isimlerini düzelt
         df.rename(columns={'open': 'Open', 'high': 'High', 'low': 'Low', 'close': 'Close', 'volume': 'Volume'}, inplace=True)
 
         if len(df) < 200: return None
 
         guncel_fiyat = df['Close'].iloc[-1]
 
-        # ---------------------------------------------------------
-        # B. TEMEL ANALİZ VERİSİ (YAHOO FINANCE)
-        # ---------------------------------------------------------
         fk_orani = 0.0
         pd_dd = 0.0
         try:
@@ -95,18 +77,13 @@ def veri_cek_ve_hesapla(sembol):
         except:
             pass 
 
-        # ---------------------------------------------------------
-        # C. İNDİKATÖR HESAPLAMALARI
-        # ---------------------------------------------------------
+       
         df.ta.sma(length=50, append=True)
         df.ta.sma(length=200, append=True)
         df.ta.rsi(length=14, append=True)
         df.ta.macd(fast=12, slow=26, signal=9, append=True)
         df.ta.adx(length=14, append=True)
 
-        # ---------------------------------------------------------
-        # D. SONUÇ
-        # ---------------------------------------------------------
         return (
             safe_float(guncel_fiyat), 
             safe_float(df['SMA_50'].iloc[-1]),
@@ -124,7 +101,7 @@ def veri_cek_ve_hesapla(sembol):
         )
 
     except Exception as e:
-        print(f"❌ Genel Kod Hatası ({sembol}): {e}")
+        print(f"❌ General Code Error ({sembol}): {e}")
         return None
 
 if __name__ == "__main__":

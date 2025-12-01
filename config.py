@@ -1,4 +1,4 @@
-# config.py
+
 DB_AYARLARI = {
     "host": "localhost",
     "database": "borsaappdb",

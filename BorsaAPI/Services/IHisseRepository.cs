@@ -2,7 +2,6 @@ using BorsaAPI.Models;
 
 namespace BorsaAPI.Services
 {
-    
     public interface IHisseRepository
     {
         List<Hisse> TumHisseleriGetir(
@@ -12,12 +11,9 @@ namespace BorsaAPI.Services
             decimal? maxMacdLine, decimal? minMacdLine,
             decimal? maxMacdSignal, decimal? minMacdSignal,
             decimal? maxMacdHist, decimal? minMacdHist,
-            
             decimal? maxAdx, decimal? minAdx,
-            decimal? maxDmp, decimal? minDmp,   
+            decimal? maxDmp, decimal? minDmp,
             decimal? maxDmn, decimal? minDmn,
             decimal? maxHacimOrani, decimal? minHacimOrani);
-            
-        
     }
 }

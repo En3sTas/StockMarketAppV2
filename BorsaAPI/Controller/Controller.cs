@@ -1,6 +1,6 @@
 using Microsoft.AspNetCore.Mvc;
 using BorsaAPI.Models;
-using BorsaAPI.Services; // <-- Using değişti
+using BorsaAPI.Services;
 
 namespace BorsaAPI.Controllers
 {
@@ -8,9 +8,8 @@ namespace BorsaAPI.Controllers
     [ApiController]
     public class HisselerController : ControllerBase
     {
-        private readonly IHisseRepository _hisseRepository; 
+        private readonly IHisseRepository _hisseRepository;
 
-        
         public HisselerController(IHisseRepository hisseRepository)
         {
             _hisseRepository = hisseRepository;
@@ -41,7 +40,6 @@ namespace BorsaAPI.Controllers
         {
             try
             {
-                
                 var veriler = _hisseRepository.TumHisseleriGetir(maxFk, minFk, 
                                                                  maxPdDd, minPdDd,
                                                                  maxRsi,minRsi,
@@ -57,7 +55,7 @@ namespace BorsaAPI.Controllers
             }
             catch (Exception ex)
             {
-                return StatusCode(500, "Hata: " + ex.Message);
+                return StatusCode(500, "Error: " + ex.Message);
             }
         }
     }

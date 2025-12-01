@@ -3,31 +3,31 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>BorsaBot v5.4 - Technical Dashboard</title>
+    <title>BorsaBot v1.5 - Technical Dashboard</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
-        /* Modern Scrollbar */
+        
         ::-webkit-scrollbar { width: 6px; }
         ::-webkit-scrollbar-track { background: #111827; }
         ::-webkit-scrollbar-thumb { background: #374151; border-radius: 4px; }
         ::-webkit-scrollbar-thumb:hover { background: #4b5563; }
         
-        /* Glassmorphism Efekti */
+        
         .glass {
             background: rgba(17, 24, 39, 0.95);
             backdrop-filter: blur(10px);
             border: 1px solid rgba(255, 255, 255, 0.05);
         }
         
-        /* Inputlardaki ok işaretlerini gizle */
+       
         input[type=number]::-webkit-inner-spin-button, 
         input[type=number]::-webkit-outer-spin-button { 
             -webkit-appearance: none; 
             margin: 0; 
         }
 
-        /* Sekme Stilleri */
+       
         .tab-active { border-bottom: 2px solid #3b82f6; color: #60a5fa; background: rgba(59, 130, 246, 0.1); }
         .tab-passive { color: #9ca3af; }
         .tab-passive:hover { color: #d1d5db; background: rgba(255,255,255,0.05); }
@@ -43,7 +43,7 @@
                         <i class="fa-solid fa-robot text-white text-xl"></i>
                     </div>
                     <div class="flex flex-col">
-                        <span class="font-bold text-xl tracking-wider leading-none">BORSA<span class="text-blue-500">BOT</span></span>
+                        <span class="font-bold text-xl tracking-wider leading-none">v1n<span class="text-blue-500">FU</span></span>
                         <span class="text-[10px] text-gray-500 font-mono">ALGO TRADING SYSTEM</span>
                     </div>
                 </div>
@@ -87,7 +87,7 @@
                     
                     <div class="space-y-5 flex-1 pr-1">
                         
-                        <!-- TREND FİLTRELERİ -->
+                       
                         <div class="bg-[#131b2e] p-4 rounded-lg border border-gray-800/60 shadow-inner">
                             <label class="text-xs text-blue-400 font-bold mb-3 block flex items-center gap-2">
                                 <i class="fa-solid fa-chart-line"></i> TREND & HACİM
@@ -118,7 +118,7 @@
                             </div>
                         </div>
 
-                        <!-- OSİLATÖRLER -->
+                        
                         <div class="bg-[#131b2e] p-4 rounded-lg border border-gray-800/60 shadow-inner">
                             <label class="text-xs text-purple-400 font-bold mb-3 block flex items-center gap-2">
                                 <i class="fa-solid fa-wave-square"></i> OSİLATÖRLER
@@ -141,7 +141,7 @@
                             </div>
                         </div>
 
-                        <!-- TEMEL VERİLER (Büyüme Kaldırıldı) -->
+                        
                         <div class="bg-[#131b2e] p-4 rounded-lg border border-gray-800/60 shadow-inner">
                             <label class="text-xs text-amber-500 font-bold mb-3 block flex items-center gap-2">
                                 <i class="fa-solid fa-coins"></i> TEMEL VERİLER
@@ -201,7 +201,7 @@
                                     <th class="p-4 font-semibold">MACD Sinyal</th>
                                     <th class="p-4 font-semibold text-amber-500/80">F/K</th>
                                     <th class="p-4 font-semibold text-amber-500/80">PD/DD</th>
-                                    <!-- Büyüme Sütunu Kaldırıldı -->
+                                   
                                     <th class="p-4 font-semibold">Tarih</th>
                                 </tr>
                             </thead>
@@ -274,7 +274,7 @@
     </div>
 
     <script>
-        // API Portunu kontrol et (varsayılan 5102 yaptık, seninkini buraya yaz)
+        
         const API_BASE_URL = "http://localhost:5158/api/hisseler";
 
         const MY_PORTFOLIO = [
@@ -308,8 +308,7 @@
             const messageArea = document.getElementById('messageArea');
             const params = new URLSearchParams();
             
-            // --- Büyüme Filtreleri SİLİNDİ ---
-            // Sadece çalışan filtreleri ekle
+           
             addParam(params, 'minFk', 'minFk'); addParam(params, 'maxFk', 'maxFk');
             addParam(params, 'minPdDd', 'minPdDd'); addParam(params, 'maxPdDd', 'maxPdDd');
             addParam(params, 'minRsi', 'minRsi'); addParam(params, 'maxRsi', 'maxRsi');
@@ -329,7 +328,7 @@
                 statusDiv.className = "flex items-center gap-2 text-xs font-mono text-emerald-400 bg-emerald-900/20 px-3 py-1.5 rounded-full border border-emerald-900";
                 messageArea.classList.add('hidden');
                 
-                // Frontend Filtreleme
+                
                 let filteredData = frontendFiltrele(globalData);
 
                 renderMarketTable(filteredData);
@@ -341,7 +340,7 @@
                 statusDiv.className = "flex items-center gap-2 text-xs font-mono text-gray-500 bg-gray-900 px-3 py-1.5 rounded-full border border-gray-800";
                 messageArea.classList.remove('hidden');
                 
-                // Demo Veri (Büyüme SİLİNDİ)
+                
                 const MOCK_DATA = [
                     { sembol: "THYAO", fiyat: 273.50, sma50: 260.00, sma200: 240.50, rsi: 28.5, adx: 35.2, dmp: 12.0, dmn: 25.0, hacimOrani: 2.1, macdHist: 2.45, macdLine: 5.2, macdSignal: 2.75, fk: 3.2, pdDd: 0.8, sonGuncelleme: new Date().toISOString() },
                     { sembol: "ASELS", fiyat: 62.10, sma50: 60.00, sma200: 65.00, rsi: 45.0, adx: 15.0, dmp: 18.0, dmn: 19.0, hacimOrani: 0.8, macdHist: -0.5, macdLine: 1.2, macdSignal: 1.7, fk: 12.5, pdDd: 3.4, sonGuncelleme: new Date().toISOString() }
@@ -357,7 +356,7 @@
             const maxHacim = parseFloat(val('maxHacim')) || 9999;
             const maxFk = parseFloat(val('maxFk')) || 9999;
             const maxPdDd = parseFloat(val('maxPdDd')) || 9999;
-            // Büyüme filtresi kaldırıldı
+            
 
             return data.filter(h => 
                 h.adx <= maxAdx && 

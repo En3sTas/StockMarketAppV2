@@ -1,4 +1,4 @@
-# database.py
+
 import psycopg2
 from config import DB_AYARLARI
 
@@ -9,8 +9,6 @@ def veriyi_kaydet(sembol, fiyat, sma50, sma200,fk,pd_dd,rsi,macd_line,macd_signa
     try:
         conn = baglanti_kur()
         cursor = conn.cursor()
-        
-        # Temiz sembol adı (THYAO.IS -> THYAO)
         temiz_sembol = sembol.replace(".IS", "")
 
         sql = """
@@ -38,6 +36,6 @@ def veriyi_kaydet(sembol, fiyat, sma50, sma200,fk,pd_dd,rsi,macd_line,macd_signa
         conn.commit()
         cursor.close()
         conn.close()
-        print(f"✅ {temiz_sembol} veritabanına kaydedildi.(RSI: {rsi:.2f}),(ADX: {adx:.2f}),(DMP: {dmp:.2f}),(DMN: {dmn:.2f})")
+        print(f"✅ {temiz_sembol} saved to database.(RSI: {rsi:.2f}),(ADX: {adx:.2f}),(DMP: {dmp:.2f}),(DMN: {dmn:.2f})")
     except Exception as e:
-        print(f"❌ Veritabanı Hatası ({sembol}): {e}")
+        print(f"❌ Database Error ({sembol}): {e}")

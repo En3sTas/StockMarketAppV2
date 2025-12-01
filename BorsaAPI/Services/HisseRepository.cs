@@ -1,7 +1,6 @@
-// HisseRepository.cs - FİNAL VERSİYON
 using BorsaAPI.Models;
 using Npgsql;
-using System.Text; // StringBuilder için gerekli
+using System.Text;
 
 namespace BorsaAPI.Services
 {
@@ -11,7 +10,6 @@ namespace BorsaAPI.Services
 
         public HisseRepository(IConfiguration configuration)
         {
-            // Veritabanı bağlantı cümleciğini alıyoruz
             _connectionString = configuration.GetConnectionString("BorsaDb") ?? string.Empty;
         }
 
@@ -32,17 +30,10 @@ namespace BorsaAPI.Services
             using (NpgsqlConnection conn = new NpgsqlConnection(_connectionString))
             {
                 conn.Open();
-
-                // 1. DİNAMİK SQL İNŞASI
-                // "WHERE 1=1" taktiği: İlk koşul her zaman doğrudur, böylece sonraki her filtre için başına "AND" koyabiliriz.
                 StringBuilder sqlBuilder = new StringBuilder("SELECT * FROM Hisseler WHERE 1=1");
-                
                 NpgsqlCommand cmd = new NpgsqlCommand();
                 cmd.Connection = conn;
 
-                // --- 2. KOŞULLARI EKLE (TÜM FİLTRELER) ---
-
-                // F/K Filtresi
                 if (minFk.HasValue)
                 {
                     sqlBuilder.Append(" AND fk >= @minFk");
@@ -53,8 +44,6 @@ namespace BorsaAPI.Services
                     sqlBuilder.Append(" AND fk <= @maxFk");
                     cmd.Parameters.AddWithValue("@maxFk", maxFk.Value);
                 }
-
-                // PD/DD Filtresi
                 if (minPdDd.HasValue)
                 {
                     sqlBuilder.Append(" AND pd_dd >= @minPdDd");
@@ -65,8 +54,6 @@ namespace BorsaAPI.Services
                     sqlBuilder.Append(" AND pd_dd <= @maxPdDd");
                     cmd.Parameters.AddWithValue("@maxPdDd", maxPdDd.Value);
                 }
-                
-                // RSI Filtresi
                 if (minRsi.HasValue)
                 {
                     sqlBuilder.Append(" AND rsi >= @minRsi");
@@ -77,8 +64,6 @@ namespace BorsaAPI.Services
                     sqlBuilder.Append(" AND rsi <= @maxRsi");
                     cmd.Parameters.AddWithValue("@maxRsi", maxRsi.Value);
                 }
-
-                // MACD Histogram Filtresi (En sık kullanılan)
                 if (minMacdHist.HasValue)
                 {
                     sqlBuilder.Append(" AND macd_hist >= @minMacdHist");
@@ -89,8 +74,6 @@ namespace BorsaAPI.Services
                     sqlBuilder.Append(" AND macd_hist <= @maxMacdHist");
                     cmd.Parameters.AddWithValue("@maxMacdHist", maxMacdHist.Value);
                 }
-
-                // MACD Line Filtresi
                 if (minMacdLine.HasValue)
                 {
                     sqlBuilder.Append(" AND macd_line >= @minMacdLine");
@@ -101,8 +84,6 @@ namespace BorsaAPI.Services
                     sqlBuilder.Append(" AND macd_line <= @maxMacdLine");
                     cmd.Parameters.AddWithValue("@maxMacdLine", maxMacdLine.Value);
                 }
-
-                // MACD Signal Filtresi
                 if (minMacdSignal.HasValue)
                 {
                     sqlBuilder.Append(" AND macd_signal >= @minMacdSignal");
@@ -113,9 +94,6 @@ namespace BorsaAPI.Services
                     sqlBuilder.Append(" AND macd_signal <= @maxMacdSignal");
                     cmd.Parameters.AddWithValue("@maxMacdSignal", maxMacdSignal.Value);
                 }
-
-                
-                // ADX Filtresi
                 if (minAdx.HasValue)
                 {
                     sqlBuilder.Append(" AND adx >= @minAdx");
@@ -126,7 +104,6 @@ namespace BorsaAPI.Services
                     sqlBuilder.Append(" AND adx <= @maxAdx");
                     cmd.Parameters.AddWithValue("@maxAdx", maxAdx.Value);
                 }
-                // DMP Filtresi
                 if (minDmp.HasValue)
                 {
                     sqlBuilder.Append(" AND dmp >= @minDmp");
@@ -137,7 +114,6 @@ namespace BorsaAPI.Services
                     sqlBuilder.Append(" AND dmp <= @maxDmp");
                     cmd.Parameters.AddWithValue("@maxDmp", maxDmp.Value);
                 }
-                // DMN Filtresi
                 if (minDmn.HasValue)
                 {
                     sqlBuilder.Append(" AND dmn >= @minDmn");
@@ -147,8 +123,7 @@ namespace BorsaAPI.Services
                 {
                     sqlBuilder.Append(" AND dmn <= @maxDmn");
                     cmd.Parameters.AddWithValue("@maxDmn", maxDmn.Value);
-                } 
-                // Hacim Oranı Filtresi
+                }
                 if (minHacimOrani.HasValue)
                 {
                     sqlBuilder.Append(" AND hacim_orani >= @minHacimOrani");
@@ -159,11 +134,7 @@ namespace BorsaAPI.Services
                     sqlBuilder.Append(" AND hacim_orani <= @maxHacimOrani");
                     cmd.Parameters.AddWithValue("@maxHacimOrani", maxHacimOrani.Value);
                 }
-
-                // 3. SIRALAMA (Alfabetik)
                 sqlBuilder.Append(" ORDER BY sembol ASC");
-
-                // 4. SORGUEYU ÇALIŞTIR
                 cmd.CommandText = sqlBuilder.ToString();
 
                 using (NpgsqlDataReader reader = cmd.ExecuteReader())
@@ -171,17 +142,11 @@ namespace BorsaAPI.Services
                     while (reader.Read())
                     {
                         Hisse hisse = new Hisse();
-                        
-                        // ID ve Sembol
                         hisse.Id = reader.GetInt32(reader.GetOrdinal("id"));
                         hisse.Sembol = reader.GetString(reader.GetOrdinal("sembol"));
-                        
-                        // Temel Veriler
                         hisse.Fiyat = reader.GetDecimal(reader.GetOrdinal("fiyat"));
                         hisse.Sma50 = reader.GetDecimal(reader.GetOrdinal("sma_50"));
                         hisse.Sma200 = reader.GetDecimal(reader.GetOrdinal("sma_200"));
-                        
-                        // İndikatörler (Null kontrolü - Veritabanında boşsa 0 ata)
                         hisse.Rsi = reader.IsDBNull(reader.GetOrdinal("rsi")) ? 0 : reader.GetDecimal(reader.GetOrdinal("rsi"));
                         hisse.Fk = reader.IsDBNull(reader.GetOrdinal("fk")) ? 0 : reader.GetDecimal(reader.GetOrdinal("fk"));
                         hisse.PdDd = reader.IsDBNull(reader.GetOrdinal("pd_dd")) ? 0 : reader.GetDecimal(reader.GetOrdinal("pd_dd"));
@@ -195,9 +160,6 @@ namespace BorsaAPI.Services
                         hisse.Dmn = reader.IsDBNull(reader.GetOrdinal("dmn")) ? 0 : reader.GetDecimal(reader.GetOrdinal("dmn"));
 
                         hisse.HacimOrani = reader.IsDBNull(reader.GetOrdinal("hacim_orani")) ? 0 : reader.GetDecimal(reader.GetOrdinal("hacim_orani"));
-                        
-                        
-                        // Tarih
                         hisse.SonGuncelleme = reader.GetDateTime(reader.GetOrdinal("son_guncelleme"));
 
                         hisseListesi.Add(hisse);
