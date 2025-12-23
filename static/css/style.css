@@ -1,0 +1,42 @@
+/* Scrollbar Özelleştirmesi */
+::-webkit-scrollbar { 
+    width: 6px; 
+}
+::-webkit-scrollbar-track { 
+    background: #111827; 
+}
+::-webkit-scrollbar-thumb { 
+    background: #374151; 
+    border-radius: 4px; 
+}
+::-webkit-scrollbar-thumb:hover { 
+    background: #4b5563; 
+}
+
+/* Glassmorphism Efekti */
+.glass {
+    background: rgba(17, 24, 39, 0.95);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+/* Number Input Oklarını Gizleme */
+input[type=number]::-webkit-inner-spin-button, 
+input[type=number]::-webkit-outer-spin-button { 
+    -webkit-appearance: none; 
+    margin: 0; 
+}
+
+/* Tab Durumları */
+.tab-active { 
+    border-bottom: 2px solid #3b82f6; 
+    color: #60a5fa; 
+    background: rgba(59, 130, 246, 0.1); 
+}
+.tab-passive { 
+    color: #9ca3af; 
+}
+.tab-passive:hover { 
+    color: #d1d5db; 
+    background: rgba(255,255,255,0.05); 
+}

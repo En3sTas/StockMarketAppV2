@@ -1,13 +1,11 @@
 {
   "version": 2,
-  "dgSpecHash": "A3HtMXwQgzrsbf5x2vl2sfXcC6ULw0XR8IvSJclon9DzPpGPspdm68w2mYdH3QD33RB2C5dzWCY09YxMiiQsfQ==",
+  "dgSpecHash": "VF5hOGuSjrg=",
   "success": true,
   "projectFilePath": "C:\\Users\\v1nfu\\OneDrive\\Masaüstü\\StackMarketApp\\BorsaAPI\\BorsaAPI.csproj",
   "expectedPackageFiles": [
     "C:\\Users\\v1nfu\\.nuget\\packages\\microsoft.aspnetcore.openapi\\8.0.21\\microsoft.aspnetcore.openapi.8.0.21.nupkg.sha512",
     "C:\\Users\\v1nfu\\.nuget\\packages\\microsoft.extensions.apidescription.server\\6.0.5\\microsoft.extensions.apidescription.server.6.0.5.nupkg.sha512",
-    "C:\\Users\\v1nfu\\.nuget\\packages\\microsoft.extensions.dependencyinjection.abstractions\\8.0.2\\microsoft.extensions.dependencyinjection.abstractions.8.0.2.nupkg.sha512",
-    "C:\\Users\\v1nfu\\.nuget\\packages\\microsoft.extensions.logging.abstractions\\8.0.2\\microsoft.extensions.logging.abstractions.8.0.2.nupkg.sha512",
     "C:\\Users\\v1nfu\\.nuget\\packages\\microsoft.openapi\\1.4.3\\microsoft.openapi.1.4.3.nupkg.sha512",
     "C:\\Users\\v1nfu\\.nuget\\packages\\npgsql\\9.0.4\\npgsql.9.0.4.nupkg.sha512",
     "C:\\Users\\v1nfu\\.nuget\\packages\\swashbuckle.aspnetcore\\6.5.0\\swashbuckle.aspnetcore.6.5.0.nupkg.sha512",

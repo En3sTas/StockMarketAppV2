@@ -3,7 +3,7 @@ DB_AYARLARI = {
     "host": "localhost",
     "database": "borsaappdb",
     "user": "postgres",
-    "password": "v1nFU2763", 
+    "password": "postgres123", 
     "port": "5432"
 }
 
