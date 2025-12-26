@@ -2,7 +2,11 @@
 const API_BASE_URL = "http://localhost:5158/api/hisseler";
 
 const MY_PORTFOLIO = [
-    { sembol: "BINHO", adet: 2420, maliyet: 10.68 }
+    { sembol: "TUPRS", adet: 22, maliyet: 183.20 },
+    { sembol: "TOASO", adet: 20, maliyet: 245.90 },
+    { sembol: "YKBNK", adet: 137, maliyet: 37.12 },
+    { sembol: "ASELS", adet: 31, maliyet: 210.70 },
+    { sembol: "BRSAN", adet: 13, maliyet: 528.50 }
 ];
 
 let globalData = [];
