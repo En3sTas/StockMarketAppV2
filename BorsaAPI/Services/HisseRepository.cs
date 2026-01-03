@@ -151,6 +151,10 @@ namespace BorsaAPI.Services
                         hisse.Fk = reader.IsDBNull(reader.GetOrdinal("fk")) ? 0 : reader.GetDecimal(reader.GetOrdinal("fk"));
                         hisse.PdDd = reader.IsDBNull(reader.GetOrdinal("pd_dd")) ? 0 : reader.GetDecimal(reader.GetOrdinal("pd_dd"));
                         
+                        hisse.FiyatOnceki = reader.IsDBNull(reader.GetOrdinal("fiyat_onceki")) ? 0 : reader.GetDecimal(reader.GetOrdinal("fiyat_onceki"));
+                        hisse.RsiOnceki = reader.IsDBNull(reader.GetOrdinal("rsi_onceki")) ? 0 : reader.GetDecimal(reader.GetOrdinal("rsi_onceki"));
+                        hisse.AdxOnceki = reader.IsDBNull(reader.GetOrdinal("adx_onceki")) ? 0 : reader.GetDecimal(reader.GetOrdinal("adx_onceki"));
+                        
                         hisse.MacdLine = reader.IsDBNull(reader.GetOrdinal("macd_line")) ? 0 : reader.GetDecimal(reader.GetOrdinal("macd_line"));
                         hisse.MacdSignal = reader.IsDBNull(reader.GetOrdinal("macd_signal")) ? 0 : reader.GetDecimal(reader.GetOrdinal("macd_signal"));
                         hisse.MacdHist = reader.IsDBNull(reader.GetOrdinal("macd_hist")) ? 0 : reader.GetDecimal(reader.GetOrdinal("macd_hist"));

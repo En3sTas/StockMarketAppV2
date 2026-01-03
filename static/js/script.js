@@ -1,6 +1,7 @@
 // Global Değişkenler
 const API_BASE_URL = "http://localhost:5158/api/hisseler";
 
+// Portföy Verileri (Sabit)
 const MY_PORTFOLIO = [
     { sembol: "TUPRS", adet: 22, maliyet: 183.20 },
     { sembol: "TOASO", adet: 20, maliyet: 245.90 },
@@ -38,6 +39,7 @@ async function verileriGetir() {
     const messageArea = document.getElementById('messageArea');
     const params = new URLSearchParams();
     
+    // Filtre değerlerini URL parametrelerine ekle
     addParam(params, 'minFk', 'minFk'); addParam(params, 'maxFk', 'maxFk');
     addParam(params, 'minPdDd', 'minPdDd'); addParam(params, 'maxPdDd', 'maxPdDd');
     addParam(params, 'minRsi', 'minRsi'); addParam(params, 'maxRsi', 'maxRsi');
@@ -47,7 +49,9 @@ async function verileriGetir() {
     addParam(params, 'minDmp', 'minDmp'); addParam(params, 'minDmn', 'minDmn');
 
     try {
-        statusDiv.innerHTML = '<span class="w-2 h-2 rounded-full bg-yellow-500 animate-pulse"></span> ...';
+        // Yükleniyor ikonu (Sadece ilk yüklemede veya manuel yenilemede görünsün diye kontrol edilebilir ama şimdilik kalsın)
+        // statusDiv.innerHTML = '<span class="w-2 h-2 rounded-full bg-yellow-500 animate-pulse"></span> ...';
+        
         const response = await fetch(`${API_BASE_URL}?${params.toString()}`);
         if (!response.ok) throw new Error("API Hatası");
         
@@ -67,6 +71,7 @@ async function verileriGetir() {
         statusDiv.className = "flex items-center gap-2 text-xs font-mono text-gray-500 bg-gray-900 px-3 py-1.5 rounded-full border border-gray-800";
         messageArea.classList.remove('hidden');
         
+        // Mock Data (Demo Verisi)
         const MOCK_DATA = [
             { sembol: "THYAO", fiyat: 273.50, sma50: 260.00, sma200: 240.50, rsi: 28.5, adx: 35.2, dmp: 12.0, dmn: 25.0, hacimOrani: 2.1, macdHist: 2.45, macdLine: 5.2, macdSignal: 2.75, fk: 3.2, pdDd: 0.8, sonGuncelleme: new Date().toISOString() },
             { sembol: "ASELS", fiyat: 62.10, sma50: 60.00, sma200: 65.00, rsi: 45.0, adx: 15.0, dmp: 18.0, dmn: 19.0, hacimOrani: 0.8, macdHist: -0.5, macdLine: 1.2, macdSignal: 1.7, fk: 12.5, pdDd: 3.4, sonGuncelleme: new Date().toISOString() }
@@ -90,6 +95,19 @@ function frontendFiltrele(data) {
         h.fk <= maxFk &&
         h.pdDd <= maxPdDd
     );
+}
+
+// Yardımcı Fonksiyon: Değişimi Hesapla ve Badge Döndür
+function getDiffBadge(current, prev) {
+    if (prev === undefined || prev === null || prev === 0) return '';
+    
+    const diff = current - prev;
+    if (Math.abs(diff) < 0.01) return ''; // Çok küçük farkları gösterme
+    
+    const color = diff > 0 ? 'text-emerald-400' : 'text-red-400';
+    const icon = diff > 0 ? '▲' : '▼';
+    
+    return `<div class="${color} text-[10px] font-mono mt-1">${icon} ${Math.abs(diff).toFixed(2)}</div>`;
 }
 
 // Piyasa Tablosunu Çiz
@@ -117,14 +135,26 @@ function renderMarketTable(data) {
         const row = `
             <tr class="hover:bg-gray-800/40 transition border-b border-gray-800/30 group">
                 <td class="p-4 font-bold text-white sticky left-0 bg-[#0b0f19] group-hover:bg-gray-800/40 z-10 border-r border-gray-800/50">${h.sembol}</td>
-                <td class="p-4 text-blue-300 font-mono text-base tracking-tight">${h.fiyat.toFixed(2)} ₺</td>
+                
+                <td class="p-4 text-blue-300 font-mono text-base tracking-tight">
+                    ${h.fiyat.toFixed(2)} ₺
+                    ${getDiffBadge(h.fiyat, h.fiyatOnceki)}
+                </td>
+                
                 <td class="p-4 font-mono ${h.fiyat > h.sma50 ? 'text-emerald-300/90' : 'text-gray-600'}">${h.sma50.toFixed(2)}</td>
                 <td class="p-4 font-mono ${h.fiyat > h.sma200 ? 'text-yellow-300/90' : 'text-gray-600'}">${h.sma200.toFixed(2)}</td>
-                <td class="p-4 font-mono ${rsiClass}">${h.rsi.toFixed(2)}</td>
+                
+                <td class="p-4 font-mono ${rsiClass}">
+                    ${h.rsi.toFixed(2)}
+                    ${getDiffBadge(h.rsi, h.rsiOnceki)}
+                </td>
                 
                 <td class="p-4 text-center bg-blue-900/5">
                     <div class="flex flex-col items-center">
-                        <span class="${adxClass} text-sm">${h.adx.toFixed(2)}</span>
+                        <span class="${adxClass} text-sm flex flex-col items-center">
+                            ${h.adx.toFixed(2)}
+                            ${getDiffBadge(h.adx, h.adxOnceki)}
+                        </span>
                         <div class="text-[10px] mt-1 flex gap-2 font-mono bg-gray-900/80 px-2 py-0.5 rounded border border-gray-700/50">
                             <span class="text-emerald-500" title="+DI">+${h.dmp.toFixed(1)}</span>
                             <span class="text-gray-600">|</span>
@@ -201,20 +231,31 @@ function renderPortfolio() {
 
     const totalPnL = totalVal - totalCost;
     const totalPnLPercent = totalCost > 0 ? (totalPnL / totalCost) * 100 : 0;
-    document.getElementById('totalBalance').innerText = `₺${totalVal.toLocaleString('tr-TR', {minimumFractionDigits: 2})}`;
-    document.getElementById('stockCount').innerText = MY_PORTFOLIO.length;
+    
+    // Güvenli erişim kontrolü
+    const totalBalanceEl = document.getElementById('totalBalance');
+    if(totalBalanceEl) totalBalanceEl.innerText = `₺${totalVal.toLocaleString('tr-TR', {minimumFractionDigits: 2})}`;
+    
+    const stockCountEl = document.getElementById('stockCount');
+    if(stockCountEl) stockCountEl.innerText = MY_PORTFOLIO.length;
+    
     const pnlEl = document.getElementById('totalPnL');
     const pnlPerEl = document.getElementById('totalPnLPercent');
-    pnlEl.innerText = `${totalPnL > 0 ? '+' : ''}₺${totalPnL.toLocaleString('tr-TR', {minimumFractionDigits: 2})}`;
-    pnlPerEl.innerText = `%${totalPnLPercent.toFixed(2)}`;
-    if (totalPnL >= 0) { 
-        pnlEl.className = "text-3xl font-bold text-emerald-400 font-mono"; 
-        pnlPerEl.className = "text-sm font-bold font-mono text-emerald-500 bg-emerald-500/10 px-2 py-1 rounded"; 
-        document.getElementById('pnlIcon').className = "bg-emerald-500/20 p-3 rounded-full text-emerald-400";
-    } else { 
-        pnlEl.className = "text-3xl font-bold text-red-400 font-mono"; 
-        pnlPerEl.className = "text-sm font-bold font-mono text-red-500 bg-red-500/10 px-2 py-1 rounded"; 
-        document.getElementById('pnlIcon').className = "bg-red-500/20 p-3 rounded-full text-red-400";
+    const pnlIcon = document.getElementById('pnlIcon');
+    
+    if(pnlEl && pnlPerEl && pnlIcon) {
+        pnlEl.innerText = `${totalPnL > 0 ? '+' : ''}₺${totalPnL.toLocaleString('tr-TR', {minimumFractionDigits: 2})}`;
+        pnlPerEl.innerText = `%${totalPnLPercent.toFixed(2)}`;
+        
+        if (totalPnL >= 0) { 
+            pnlEl.className = "text-3xl font-bold text-emerald-400 font-mono"; 
+            pnlPerEl.className = "text-sm font-bold font-mono text-emerald-500 bg-emerald-500/10 px-2 py-1 rounded"; 
+            pnlIcon.className = "bg-emerald-500/20 p-3 rounded-full text-emerald-400";
+        } else { 
+            pnlEl.className = "text-3xl font-bold text-red-400 font-mono"; 
+            pnlPerEl.className = "text-sm font-bold font-mono text-red-500 bg-red-500/10 px-2 py-1 rounded"; 
+            pnlIcon.className = "bg-red-500/20 p-3 rounded-full text-red-400";
+        }
     }
 }
 
@@ -223,5 +264,28 @@ function addParam(params, name, id) { const el = document.getElementById(id); if
 function val(id) { return document.getElementById(id) ? document.getElementById(id).value : null; }
 function temizle() { document.querySelectorAll('input').forEach(i => i.value = ''); verileriGetir(); }
 
-// Başlangıç
+// BAŞLANGIÇ & OTOMATİK YENİLEME MANTIĞI
+// -------------------------------------
+
+// 1. Sayfa ilk açıldığında veriyi çek
 window.onload = verileriGetir;
+
+// 2. Her 30 saniyede bir kontrol et ve güncelle
+setInterval(() => {
+    const toggle = document.getElementById('autoRefreshToggle');
+    
+    // DİKKAT: Sadece toggle elementi varsa ve CHECKED (seçili) ise çalışır.
+    if (toggle && toggle.checked) {
+        console.log("🔄 Canlı veri güncelleniyor...");
+        verileriGetir();
+        
+        // Yenileme butonunu döndür (Görsel efekt)
+        const refreshBtn = document.querySelector('.fa-rotate');
+        if(refreshBtn) {
+            refreshBtn.classList.add('fa-spin');
+            setTimeout(() => refreshBtn.classList.remove('fa-spin'), 1000);
+        }
+    } else {
+        console.log("⏸️ Canlı veri duraklatıldı.");
+    }
+}, 30000); // 30000 ms = 30 Saniye

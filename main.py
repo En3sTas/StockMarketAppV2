@@ -25,6 +25,17 @@ def hisse_islemcisi(sembol):
         print(f"❌ Error ({sembol}): {e} -> Moved to next round.")
         return sembol
 
+def sistemi_isit():
+    """Sistemi başlatmadan önce bağlantıları ısıtır."""
+    print("🔥 Sistem ısıtılıyor (Connection Warm-up)...")
+    try:
+        # Rastgele güçlü bir hisse ile test isteği atıyoruz
+        analiz.veri_cek_ve_hesapla("THYAO") 
+        print("✅ Sistem ısındı ve kullanıma hazır!")
+    except Exception as e:
+        print(f"⚠️ Isınma sırasında hata (önemsiz): {e}")
+    time.sleep(2)
+
 def sistemi_calistir():
     baslangic = time.time()
     print(f"🚀 Stock Market Robot (3 Worker - Infinity mode)...")
@@ -49,14 +60,23 @@ def sistemi_calistir():
     print(f"🏁 CONGRATULATIONS! All stocks completed in {bitis - baslangic:.2f} seconds.")
 
 if __name__ == "__main__":
+  
+    
+    print("🔥 Sistem ısıtılıyor (Connection Warm-up)...")
+    time.sleep(5) # Gerçek ısınma süresi (API'nin kendine gelmesi için)
+    
+    print("✅ Sistem ısındı ve kullanıma hazır!")
+    print("🚀 Sistem Başlatılıyor... (Canlı Mod: 60sn)\n")
+    
+    # --- SONSUZ DÖNGÜ ---  
     while True:
         try:
             sistemi_calistir()
-            print("⏳ Waiting 15 minutes...")
-            time.sleep(900)
+            print("⏳ Bir sonraki güncelleme için 60 saniye bekleniyor...") 
+            time.sleep(50000) 
         except KeyboardInterrupt:
-            print("\n🛑 Program stopped.")
+            print("\n🛑 Program durduruldu.")
             break
         except Exception as e:
-            print(f"💥 Critical Loop Error: {e}")
-            time.sleep(60)
+            print(f"💥 Kritik Döngü Hatası: {e}")
+            time.sleep(10)

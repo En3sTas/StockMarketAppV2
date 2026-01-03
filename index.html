@@ -34,6 +34,15 @@
                 </div>
 
                 <div class="flex items-center gap-4">
+                    <div class="flex items-center mr-2 border-r border-gray-700 pr-4">
+                        <label class="relative inline-flex items-center cursor-pointer group">
+                            <input type="checkbox" id="autoRefreshToggle" class="sr-only peer" checked>
+                            <div class="w-9 h-5 bg-gray-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-blue-600 group-hover:peer-checked:bg-blue-500"></div>
+                            <span class="ml-2 text-xs font-bold text-gray-400 peer-checked:text-blue-400 transition-colors">
+                                <i class="fa-solid fa-bolt"></i> Canlı
+                            </span>
+                        </label>
+                    </div>
                     <div id="connectionStatus" class="flex items-center gap-2 text-xs font-mono text-gray-500 bg-gray-900/50 px-3 py-1.5 rounded-full border border-gray-800">
                         <span class="w-2 h-2 rounded-full bg-red-500 animate-pulse"></span> Bağlantı Yok
                     </div>

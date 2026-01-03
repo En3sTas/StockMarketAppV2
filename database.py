@@ -4,18 +4,24 @@ from config import DB_AYARLARI
 
 def baglanti_kur():
     return psycopg2.connect(**DB_AYARLARI)
+# database.py dosyasının veriyi_kaydet fonksiyonunu güncelleyin:
 
-def veriyi_kaydet(sembol, fiyat, sma50, sma200,fk,pd_dd,rsi,macd_line,macd_signal,macd_hist, adx, dmp, dmn, hacim_orani):
+def veriyi_kaydet(sembol, fiyat, sma50, sma200, fk, pd_dd, rsi, macd_line, macd_signal, macd_hist, adx, dmp, dmn, hacim_orani):
     try:
         conn = baglanti_kur()
         cursor = conn.cursor()
         temiz_sembol = sembol.replace(".IS", "")
 
+        # SQL Sorgusu Güncellendi: Önceki değerleri (Hisseler.fiyat vb.) _onceki sütunlarına atıyoruz.
         sql = """
-        INSERT INTO Hisseler (sembol, fiyat, sma_50, sma_200, fk, pd_dd,rsi,macd_line,macd_signal,macd_hist,adx,dmp,dmn,hacim_orani, son_guncelleme)
-        VALUES (%s, %s, %s, %s, %s, %s,%s,%s,%s,%s,%s,%s,%s,%s, NOW())
+        INSERT INTO Hisseler (sembol, fiyat, sma_50, sma_200, fk, pd_dd, rsi, macd_line, macd_signal, macd_hist, adx, dmp, dmn, hacim_orani, son_guncelleme)
+        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, NOW())
         ON CONFLICT (sembol) 
         DO UPDATE SET 
+            fiyat_onceki = Hisseler.fiyat,    -- Eski fiyatı yedekle
+            rsi_onceki = Hisseler.rsi,        -- Eski RSI'ı yedekle
+            adx_onceki = Hisseler.adx,        -- Eski ADX'i yedekle
+            
             fiyat = EXCLUDED.fiyat,
             sma_50 = EXCLUDED.sma_50,
             sma_200 = EXCLUDED.sma_200,
@@ -25,17 +31,17 @@ def veriyi_kaydet(sembol, fiyat, sma50, sma200,fk,pd_dd,rsi,macd_line,macd_signa
             macd_line = EXCLUDED.macd_line,
             macd_signal = EXCLUDED.macd_signal,
             macd_hist= EXCLUDED.macd_hist,
-            
             adx = EXCLUDED.adx,
             dmp = EXCLUDED.dmp,
             dmn = EXCLUDED.dmn,
             hacim_orani = EXCLUDED.hacim_orani,
             son_guncelleme = EXCLUDED.son_guncelleme;
         """
-        cursor.execute(sql, (temiz_sembol, fiyat, sma50, sma200,fk,pd_dd,rsi,macd_line,macd_signal,macd_hist, adx, dmp, dmn, hacim_orani))
+        cursor.execute(sql, (temiz_sembol, fiyat, sma50, sma200, fk, pd_dd, rsi, macd_line, macd_signal, macd_hist, adx, dmp, dmn, hacim_orani))
         conn.commit()
         cursor.close()
         conn.close()
-        print(f"✅ {temiz_sembol} saved to database.(RSI: {rsi:.2f}),(ADX: {adx:.2f}),(DMP: {dmp:.2f}),(DMN: {dmn:.2f})")
+        # Konsola basarken farkı göstermiyoruz ama veritabanına kaydettik.
+        print(f"✅ {temiz_sembol} saved. RSI: {rsi:.2f} | ADX: {adx:.2f}")
     except Exception as e:
         print(f"❌ Database Error ({sembol}): {e}")

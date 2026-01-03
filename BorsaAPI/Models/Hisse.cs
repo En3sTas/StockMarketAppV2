@@ -18,5 +18,8 @@ namespace BorsaAPI.Models
         public decimal Dmn { get; set; }
         public decimal HacimOrani { get; set; }
         public DateTime SonGuncelleme { get; set; }
+        public decimal FiyatOnceki { get; set; }
+        public decimal RsiOnceki { get; set; }
+        public decimal AdxOnceki { get; set; }
     }
 }

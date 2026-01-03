@@ -70,12 +70,18 @@ def veri_cek_ve_hesapla(sembol):
 
         fk_orani = 0.0
         pd_dd = 0.0
-        try:
-            info = yf.Ticker(yf_symbol).info
-            fk_orani = safe_float(info.get('trailingPE', 0))
-            pd_dd = safe_float(info.get('priceToBook', 0))
-        except:
-            pass 
+        
+        # YFinance Retry Mekanizması Eklendi
+        for _ in range(3):
+            try:
+                info = yf.Ticker(yf_symbol).info
+                if info:
+                    fk_orani = safe_float(info.get('trailingPE', 0))
+                    pd_dd = safe_float(info.get('priceToBook', 0))
+                    break
+            except:
+                time.sleep(1)
+                continue
 
        
         df.ta.sma(length=50, append=True)
