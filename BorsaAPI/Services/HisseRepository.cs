@@ -23,7 +23,7 @@ namespace BorsaAPI.Services
                                              decimal? maxAdx, decimal? minAdx,
                                              decimal? maxDmp, decimal? minDmp,
                                              decimal? maxDmn, decimal? minDmn
-                                             ,decimal? maxHacimOrani, decimal? minHacimOrani)
+                                             ,decimal? maxHacimOrani, decimal? minHacimOrani, string? signal)
         {
             List<Hisse> hisseListesi = new List<Hisse>();
 
@@ -34,6 +34,12 @@ namespace BorsaAPI.Services
                 NpgsqlCommand cmd = new NpgsqlCommand();
                 cmd.Connection = conn;
 
+                if (!string.IsNullOrEmpty(signal) && signal != "All")
+                {
+                    sqlBuilder.Append(" AND signal = @signal");
+                    cmd.Parameters.AddWithValue("@signal", signal);
+                }
+                
                 if (minFk.HasValue)
                 {
                     sqlBuilder.Append(" AND fk >= @minFk");
@@ -162,9 +168,18 @@ namespace BorsaAPI.Services
                         hisse.Adx = reader.IsDBNull(reader.GetOrdinal("adx")) ? 0 : reader.GetDecimal(reader.GetOrdinal("adx"));
                         hisse.Dmp = reader.IsDBNull(reader.GetOrdinal("dmp")) ? 0 : reader.GetDecimal(reader.GetOrdinal("dmp"));
                         hisse.Dmn = reader.IsDBNull(reader.GetOrdinal("dmn")) ? 0 : reader.GetDecimal(reader.GetOrdinal("dmn"));
+                        hisse.Atr = reader.IsDBNull(reader.GetOrdinal("atr")) ? 0 : reader.GetDecimal(reader.GetOrdinal("atr"));
 
                         hisse.HacimOrani = reader.IsDBNull(reader.GetOrdinal("hacim_orani")) ? 0 : reader.GetDecimal(reader.GetOrdinal("hacim_orani"));
                         hisse.SonGuncelleme = reader.GetDateTime(reader.GetOrdinal("son_guncelleme"));
+
+                        // Yeni Eklenen Sütunlar
+                        hisse.Signal = reader.IsDBNull(reader.GetOrdinal("signal")) ? "NO_TRADE" : reader.GetString(reader.GetOrdinal("signal"));
+                        hisse.Score = reader.IsDBNull(reader.GetOrdinal("score")) ? 0 : reader.GetInt32(reader.GetOrdinal("score"));
+                        hisse.StopPrice = reader.IsDBNull(reader.GetOrdinal("stop_price")) ? 0 : reader.GetDecimal(reader.GetOrdinal("stop_price"));
+                        hisse.TargetPrice = reader.IsDBNull(reader.GetOrdinal("target_price")) ? 0 : reader.GetDecimal(reader.GetOrdinal("target_price"));
+                        hisse.MacdHistOnceki = reader.IsDBNull(reader.GetOrdinal("macd_hist_onceki")) ? 0 : reader.GetDecimal(reader.GetOrdinal("macd_hist_onceki"));
+                        hisse.HacimOnceki = reader.IsDBNull(reader.GetOrdinal("hacim_onceki")) ? 0 : reader.GetDecimal(reader.GetOrdinal("hacim_onceki"));
 
                         hisseListesi.Add(hisse);
                     }

@@ -38,7 +38,7 @@ async function verileriGetir() {
     const statusDiv = document.getElementById('connectionStatus');
     const messageArea = document.getElementById('messageArea');
     const params = new URLSearchParams();
-    
+
     // Filtre değerlerini URL parametrelerine ekle
     addParam(params, 'minFk', 'minFk'); addParam(params, 'maxFk', 'maxFk');
     addParam(params, 'minPdDd', 'minPdDd'); addParam(params, 'maxPdDd', 'maxPdDd');
@@ -47,38 +47,78 @@ async function verileriGetir() {
     addParam(params, 'minAdx', 'minAdx'); addParam(params, 'maxAdx', 'maxAdx');
     addParam(params, 'minHacimOrani', 'minHacim'); addParam(params, 'maxHacimOrani', 'maxHacim');
     addParam(params, 'minDmp', 'minDmp'); addParam(params, 'minDmn', 'minDmn');
+    addParam(params, 'signal', 'filterSignal'); // NEW: Signal parameter
 
     try {
-        // Yükleniyor ikonu (Sadece ilk yüklemede veya manuel yenilemede görünsün diye kontrol edilebilir ama şimdilik kalsın)
-        // statusDiv.innerHTML = '<span class="w-2 h-2 rounded-full bg-yellow-500 animate-pulse"></span> ...';
-        
+        // ... (loading logic)
+
         const response = await fetch(`${API_BASE_URL}?${params.toString()}`);
         if (!response.ok) throw new Error("API Hatası");
-        
+
         globalData = await response.json();
-        
+
         statusDiv.innerHTML = '<span class="w-2 h-2 rounded-full bg-emerald-500"></span> Online';
         statusDiv.className = "flex items-center gap-2 text-xs font-mono text-emerald-400 bg-emerald-900/20 px-3 py-1.5 rounded-full border border-emerald-900";
         messageArea.classList.add('hidden');
-        
+
         let filteredData = frontendFiltrele(globalData);
+
+        // Mevcut seçili sıralamaya göre sırala ve çiz
+        applySort(filteredData);
         renderMarketTable(filteredData);
-        renderPortfolio(); 
+        renderPortfolio();
 
     } catch (error) {
-        console.warn(error);
-        statusDiv.innerHTML = '<span class="w-2 h-2 rounded-full bg-red-500"></span> Offline';
-        statusDiv.className = "flex items-center gap-2 text-xs font-mono text-gray-500 bg-gray-900 px-3 py-1.5 rounded-full border border-gray-800";
-        messageArea.classList.remove('hidden');
-        
-        // Mock Data (Demo Verisi)
-        const MOCK_DATA = [
-            { sembol: "THYAO", fiyat: 273.50, sma50: 260.00, sma200: 240.50, rsi: 28.5, adx: 35.2, dmp: 12.0, dmn: 25.0, hacimOrani: 2.1, macdHist: 2.45, macdLine: 5.2, macdSignal: 2.75, fk: 3.2, pdDd: 0.8, sonGuncelleme: new Date().toISOString() },
-            { sembol: "ASELS", fiyat: 62.10, sma50: 60.00, sma200: 65.00, rsi: 45.0, adx: 15.0, dmp: 18.0, dmn: 19.0, hacimOrani: 0.8, macdHist: -0.5, macdLine: 1.2, macdSignal: 1.7, fk: 12.5, pdDd: 3.4, sonGuncelleme: new Date().toISOString() }
-        ];
-        globalData = MOCK_DATA;
-        renderMarketTable(MOCK_DATA);
+        // ... (error handling)
     }
+}
+
+// SIRALAMA MANTIĞI
+let currentSort = { column: 'score', direction: 'desc' };
+
+function sortTable(column) {
+    // Aynı kolona tıkladıysa yön değiştir
+    if (currentSort.column === column) {
+        currentSort.direction = currentSort.direction === 'asc' ? 'desc' : 'asc';
+    } else {
+        // Yeni kolon seçildiyse varsayılan yönler
+        currentSort.column = column;
+        // Metinler için A-Z (asc), Sayılar için Z-A (desc) varsayılan olsun
+        currentSort.direction = (column === 'sembol' || column === 'signal') ? 'asc' : 'desc';
+    }
+
+    // Header ikonlarını güncelle (Opsiyonel görsel güncelleme için)
+    updateSortIcons();
+
+    // Veriyi yeniden filtrele, sırala ve çiz
+    let filteredData = frontendFiltrele(globalData);
+    applySort(filteredData);
+    renderMarketTable(filteredData);
+}
+
+function applySort(data) {
+    data.sort((a, b) => {
+        let valA = a[currentSort.column];
+        let valB = b[currentSort.column];
+
+        // Null/Undefined kontrolü (En sona atalım)
+        if (valA === null || valA === undefined) valA = -999999;
+        if (valB === null || valB === undefined) valB = -999999;
+
+        // String karşılaştırma için
+        if (typeof valA === 'string') valA = valA.toLowerCase();
+        if (typeof valB === 'string') valB = valB.toLowerCase();
+
+        if (valA < valB) return currentSort.direction === 'asc' ? -1 : 1;
+        if (valA > valB) return currentSort.direction === 'asc' ? 1 : -1;
+        return 0;
+    });
+}
+
+function updateSortIcons() {
+    // Tüm headerlardaki ikonları resetle (Bu fonksiyon için HTML tarafında id veya class düzeni gerekir, şimdilik basit tutalım)
+    // İleride headerlara ok işareti eklenebilir.
+    console.log(`Sıralama: ${currentSort.column} (${currentSort.direction})`);
 }
 
 // Frontend Filtreleme
@@ -88,25 +128,30 @@ function frontendFiltrele(data) {
     const maxHacim = parseFloat(val('maxHacim')) || 9999;
     const maxFk = parseFloat(val('maxFk')) || 9999;
     const maxPdDd = parseFloat(val('maxPdDd')) || 9999;
+    const minScoreEl = document.getElementById('minScoreSlider');
+    const minScore = minScoreEl ? (parseFloat(minScoreEl.value) || 0) : 0;
 
-    return data.filter(h => 
-        h.adx <= maxAdx && 
+    return data.filter(h =>
+        h.adx <= maxAdx &&
         h.hacimOrani >= minHacim && h.hacimOrani <= maxHacim &&
         h.fk <= maxFk &&
-        h.pdDd <= maxPdDd
+        h.pdDd <= maxPdDd &&
+        (h.score || 0) >= minScore
     );
 }
+
+
 
 // Yardımcı Fonksiyon: Değişimi Hesapla ve Badge Döndür
 function getDiffBadge(current, prev) {
     if (prev === undefined || prev === null || prev === 0) return '';
-    
+
     const diff = current - prev;
     if (Math.abs(diff) < 0.01) return ''; // Çok küçük farkları gösterme
-    
+
     const color = diff > 0 ? 'text-emerald-400' : 'text-red-400';
     const icon = diff > 0 ? '▲' : '▼';
-    
+
     return `<div class="${color} text-[10px] font-mono mt-1">${icon} ${Math.abs(diff).toFixed(2)}</div>`;
 }
 
@@ -114,25 +159,42 @@ function getDiffBadge(current, prev) {
 function renderMarketTable(data) {
     const tbody = document.getElementById('hisseTablosu');
     tbody.innerHTML = '';
-    
+
     if (data.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="12" class="p-12 text-center text-gray-500">Aradığınız kriterlere uygun hisse bulunamadı.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="16" class="p-12 text-center text-gray-500">Aradığınız kriterlere uygun hisse bulunamadı.</td></tr>';
         return;
     }
 
     data.forEach(h => {
-        const rsiClass = h.rsi < 30 ? 'text-emerald-400 font-bold animate-pulse' : (h.rsi > 70 ? 'text-red-400 font-bold' : 'text-gray-400');
-        const macdClass = h.macdHist > 0 ? 'text-emerald-400' : 'text-red-400';
-        const adxClass = h.adx > 25 ? 'text-white font-bold' : 'text-gray-600';
-        
-        let volText = 'text-gray-500';
-        let volIcon = 'fa-battery-quarter text-gray-700';
-        if (h.hacimOrani > 2.0) { volText = 'text-orange-400 font-bold'; volIcon = 'fa-fire-flame-curved animate-pulse text-orange-500'; }
-        else if (h.hacimOrani > 1.2) { volText = 'text-emerald-300'; volIcon = 'fa-arrow-trend-up text-emerald-500'; }
-        
-        const tarih = new Date(h.sonGuncelleme).toLocaleTimeString('tr-TR', {hour: '2-digit', minute:'2-digit'});
+        try {
+            const rsiClass = h.rsi < 30 ? 'text-emerald-400 font-bold animate-pulse' : (h.rsi > 70 ? 'text-red-400 font-bold' : 'text-gray-400');
+            const macdClass = h.macdHist > 0 ? 'text-emerald-400' : 'text-red-400';
+            const adxClass = h.adx > 25 ? 'text-white font-bold' : 'text-gray-600';
 
-        const row = `
+            let volText = 'text-gray-500';
+            let volIcon = 'fa-battery-quarter text-gray-700';
+            if (h.hacimOrani > 2.0) { volText = 'text-orange-400 font-bold'; volIcon = 'fa-fire-flame-curved animate-pulse text-orange-500'; }
+            else if (h.hacimOrani > 1.2) { volText = 'text-emerald-300'; volIcon = 'fa-arrow-trend-up text-emerald-500'; }
+
+            // Signal Badge Logic
+            let signalBadge = '';
+            switch (h.signal) {
+                case 'STRONG_BUY': signalBadge = '<span class="bg-gradient-to-r from-emerald-600 to-green-500 text-white px-3 py-1 rounded-full text-[10px] font-bold shadow-lg shadow-emerald-900/40 animate-pulse"><i class="fa-solid fa-rocket mr-1"></i> GÜÇLÜ AL</span>'; break;
+                case 'BUY': signalBadge = '<span class="bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 px-2 py-1 rounded text-[10px] font-bold">✅ AL</span>'; break;
+                case 'WATCH': signalBadge = '<span class="bg-yellow-500/10 text-yellow-400 border border-yellow-500/30 px-2 py-1 rounded text-[10px] font-bold">👀 İZLE</span>'; break;
+                default: signalBadge = '<span class="text-gray-600 text-[10px]">NO TRADE</span>';
+            }
+
+            // Score Color Logic
+            let scoreColor = 'text-gray-500';
+            if (h.score >= 75) scoreColor = 'text-emerald-400 font-bold';
+            else if (h.score >= 50) scoreColor = 'text-yellow-400';
+            else if (h.score >= 30) scoreColor = 'text-orange-400';
+            else scoreColor = 'text-red-400';
+
+            const tarih = new Date(h.sonGuncelleme).toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' });
+
+            const row = `
             <tr class="hover:bg-gray-800/40 transition border-b border-gray-800/30 group">
                 <td class="p-4 font-bold text-white sticky left-0 bg-[#0b0f19] group-hover:bg-gray-800/40 z-10 border-r border-gray-800/50">${h.sembol}</td>
                 
@@ -180,9 +242,26 @@ function renderMarketTable(data) {
 
                 <td class="p-4 text-gray-400 font-mono">${h.fk.toFixed(2)}</td>
                 <td class="p-4 text-gray-400 font-mono">${h.pdDd.toFixed(2)}</td>
+
+                <!-- NEW: Trading Signal Cells -->
+                <td class="p-4 text-center">${signalBadge}</td>
+                <td class="p-4 text-center">
+                    <div class="flex flex-col items-center">
+                        <span class="${scoreColor} text-lg font-mono">${h.score || 0}</span>
+                        <div class="w-16 h-1 bg-gray-700 rounded-full mt-1 overflow-hidden">
+                            <div class="h-full ${h.score >= 75 ? 'bg-emerald-500' : (h.score >= 50 ? 'bg-yellow-500' : 'bg-red-500')}" style="width: ${h.score || 0}%"></div>
+                        </div>
+                    </div>
+                </td>
+                <td class="p-4 text-right font-mono text-red-300 text-xs">${(h.stopPrice || 0).toFixed(2)} ₺</td>
+                <td class="p-4 text-right font-mono text-emerald-300 text-xs">${(h.targetPrice || 0).toFixed(2)} ₺</td>
+
                 <td class="p-4 text-xs text-gray-600 font-mono">${tarih}</td>
             </tr>`;
-        tbody.innerHTML += row;
+            tbody.innerHTML += row;
+        } catch (err) {
+            console.error("Rendering Error for stock:", h, err);
+        }
     });
 }
 
@@ -199,20 +278,20 @@ function renderPortfolio() {
         let costValue = item.maliyet * item.adet;
         let pnl = totalValue - costValue;
         let pnlPercent = costValue > 0 ? (pnl / costValue) * 100 : 0;
-        
-        if(currentPrice > 0) {
-            totalVal += totalValue; 
+
+        if (currentPrice > 0) {
+            totalVal += totalValue;
             totalCost += costValue;
         }
 
         const pnlClass = pnl >= 0 ? 'text-emerald-400' : 'text-red-400';
         const bgClass = pnl >= 0 ? 'bg-emerald-500/10' : 'bg-red-500/10';
-        
+
         let signalBadge = '<span class="text-gray-600">-</span>';
-        if(liveData) {
-            if(liveData.rsi < 30 && liveData.adx > 20) signalBadge = '<span class="bg-emerald-500 text-black px-2 py-1 rounded text-xs font-bold animate-pulse">AL FIRSATI</span>';
-            else if(liveData.rsi > 70) signalBadge = '<span class="bg-red-500 text-white px-2 py-1 rounded text-xs font-bold">SAT (Şişti)</span>';
-            else if(liveData.hacimOrani > 2.0) signalBadge = '<span class="bg-orange-500 text-white px-2 py-1 rounded text-xs font-bold">HACİM PATLAMASI</span>';
+        if (liveData) {
+            if (liveData.rsi < 30 && liveData.adx > 20) signalBadge = '<span class="bg-emerald-500 text-black px-2 py-1 rounded text-xs font-bold animate-pulse">AL FIRSATI</span>';
+            else if (liveData.rsi > 70) signalBadge = '<span class="bg-red-500 text-white px-2 py-1 rounded text-xs font-bold">SAT (Şişti)</span>';
+            else if (liveData.hacimOrani > 2.0) signalBadge = '<span class="bg-orange-500 text-white px-2 py-1 rounded text-xs font-bold">HACİM PATLAMASI</span>';
         }
 
         const row = `
@@ -231,36 +310,36 @@ function renderPortfolio() {
 
     const totalPnL = totalVal - totalCost;
     const totalPnLPercent = totalCost > 0 ? (totalPnL / totalCost) * 100 : 0;
-    
+
     // Güvenli erişim kontrolü
     const totalBalanceEl = document.getElementById('totalBalance');
-    if(totalBalanceEl) totalBalanceEl.innerText = `₺${totalVal.toLocaleString('tr-TR', {minimumFractionDigits: 2})}`;
-    
+    if (totalBalanceEl) totalBalanceEl.innerText = `₺${totalVal.toLocaleString('tr-TR', { minimumFractionDigits: 2 })}`;
+
     const stockCountEl = document.getElementById('stockCount');
-    if(stockCountEl) stockCountEl.innerText = MY_PORTFOLIO.length;
-    
+    if (stockCountEl) stockCountEl.innerText = MY_PORTFOLIO.length;
+
     const pnlEl = document.getElementById('totalPnL');
     const pnlPerEl = document.getElementById('totalPnLPercent');
     const pnlIcon = document.getElementById('pnlIcon');
-    
-    if(pnlEl && pnlPerEl && pnlIcon) {
-        pnlEl.innerText = `${totalPnL > 0 ? '+' : ''}₺${totalPnL.toLocaleString('tr-TR', {minimumFractionDigits: 2})}`;
+
+    if (pnlEl && pnlPerEl && pnlIcon) {
+        pnlEl.innerText = `${totalPnL > 0 ? '+' : ''}₺${totalPnL.toLocaleString('tr-TR', { minimumFractionDigits: 2 })}`;
         pnlPerEl.innerText = `%${totalPnLPercent.toFixed(2)}`;
-        
-        if (totalPnL >= 0) { 
-            pnlEl.className = "text-3xl font-bold text-emerald-400 font-mono"; 
-            pnlPerEl.className = "text-sm font-bold font-mono text-emerald-500 bg-emerald-500/10 px-2 py-1 rounded"; 
+
+        if (totalPnL >= 0) {
+            pnlEl.className = "text-3xl font-bold text-emerald-400 font-mono";
+            pnlPerEl.className = "text-sm font-bold font-mono text-emerald-500 bg-emerald-500/10 px-2 py-1 rounded";
             pnlIcon.className = "bg-emerald-500/20 p-3 rounded-full text-emerald-400";
-        } else { 
-            pnlEl.className = "text-3xl font-bold text-red-400 font-mono"; 
-            pnlPerEl.className = "text-sm font-bold font-mono text-red-500 bg-red-500/10 px-2 py-1 rounded"; 
+        } else {
+            pnlEl.className = "text-3xl font-bold text-red-400 font-mono";
+            pnlPerEl.className = "text-sm font-bold font-mono text-red-500 bg-red-500/10 px-2 py-1 rounded";
             pnlIcon.className = "bg-red-500/20 p-3 rounded-full text-red-400";
         }
     }
 }
 
 // Yardımcı Fonksiyonlar
-function addParam(params, name, id) { const el = document.getElementById(id); if(el && el.value) params.append(name, el.value); }
+function addParam(params, name, id) { const el = document.getElementById(id); if (el && el.value) params.append(name, el.value); }
 function val(id) { return document.getElementById(id) ? document.getElementById(id).value : null; }
 function temizle() { document.querySelectorAll('input').forEach(i => i.value = ''); verileriGetir(); }
 
@@ -273,15 +352,15 @@ window.onload = verileriGetir;
 // 2. Her 30 saniyede bir kontrol et ve güncelle
 setInterval(() => {
     const toggle = document.getElementById('autoRefreshToggle');
-    
+
     // DİKKAT: Sadece toggle elementi varsa ve CHECKED (seçili) ise çalışır.
     if (toggle && toggle.checked) {
         console.log("🔄 Canlı veri güncelleniyor...");
         verileriGetir();
-        
+
         // Yenileme butonunu döndür (Görsel efekt)
         const refreshBtn = document.querySelector('.fa-rotate');
-        if(refreshBtn) {
+        if (refreshBtn) {
             refreshBtn.classList.add('fa-spin');
             setTimeout(() => refreshBtn.classList.remove('fa-spin'), 1000);
         }
@@ -289,3 +368,14 @@ setInterval(() => {
         console.log("⏸️ Canlı veri duraklatıldı.");
     }
 }, 30000); // 30000 ms = 30 Saniye
+
+// Slider Değer Göstergesi
+document.addEventListener('DOMContentLoaded', () => {
+    const slider = document.getElementById('minScoreSlider');
+    const valueDisplay = document.getElementById('minScoreValue');
+    if (slider && valueDisplay) {
+        slider.addEventListener('input', (e) => {
+            valueDisplay.innerText = e.target.value;
+        });
+    }
+});

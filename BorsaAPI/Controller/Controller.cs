@@ -36,7 +36,8 @@ namespace BorsaAPI.Controllers
             [FromQuery] decimal? maxDmn,
             [FromQuery] decimal? minDmn,
             [FromQuery] decimal? maxHacimOrani,
-            [FromQuery] decimal? minHacimOrani)
+            [FromQuery] decimal? minHacimOrani,
+            [FromQuery] string? signal)
         {
             try
             {
@@ -50,7 +51,7 @@ namespace BorsaAPI.Controllers
                                                                  maxAdx, minAdx,
                                                                  maxDmp, minDmp,
                                                                  maxDmn, minDmn,
-                                                                 maxHacimOrani, minHacimOrani);
+                                                                 maxHacimOrani, minHacimOrani, signal);
                 return Ok(veriler);
             }
             catch (Exception ex)

@@ -6,22 +6,26 @@ def baglanti_kur():
     return psycopg2.connect(**DB_AYARLARI)
 # database.py dosyasının veriyi_kaydet fonksiyonunu güncelleyin:
 
-def veriyi_kaydet(sembol, fiyat, sma50, sma200, fk, pd_dd, rsi, macd_line, macd_signal, macd_hist, adx, dmp, dmn, hacim_orani):
+def veriyi_kaydet(sembol, fiyat, sma50, sma200, fk, pd_dd, rsi, macd_line, macd_signal, macd_hist, adx, dmp, dmn, hacim_orani,
+                  signal="NO_TRADE", score=0, stop_price=0, target_price=0, macd_hist_onceki=0, hacim_onceki=0,
+                  fiyat_onceki=0, rsi_onceki=0, adx_onceki=0, atr=0):
     try:
         conn = baglanti_kur()
         cursor = conn.cursor()
         temiz_sembol = sembol.replace(".IS", "")
 
-        # SQL Sorgusu Güncellendi: Önceki değerleri (Hisseler.fiyat vb.) _onceki sütunlarına atıyoruz.
+        # SQL Sorgusu Güncellendi: Artık analiz.py'den gelen fiyat_onceki (dünkü kapanış) kaydediliyor.
+        # Böylece ekranda "Günlük Değişim" görülebilecek.
         sql = """
-        INSERT INTO Hisseler (sembol, fiyat, sma_50, sma_200, fk, pd_dd, rsi, macd_line, macd_signal, macd_hist, adx, dmp, dmn, hacim_orani, son_guncelleme)
-        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, NOW())
+        INSERT INTO Hisseler (
+            sembol, fiyat, sma_50, sma_200, fk, pd_dd, rsi, macd_line, macd_signal, macd_hist, adx, dmp, dmn, hacim_orani, 
+            signal, score, stop_price, target_price, macd_hist_onceki, hacim_onceki,
+            fiyat_onceki, rsi_onceki, adx_onceki, atr,
+            son_guncelleme
+        )
+        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, NOW())
         ON CONFLICT (sembol) 
         DO UPDATE SET 
-            fiyat_onceki = Hisseler.fiyat,    -- Eski fiyatı yedekle
-            rsi_onceki = Hisseler.rsi,        -- Eski RSI'ı yedekle
-            adx_onceki = Hisseler.adx,        -- Eski ADX'i yedekle
-            
             fiyat = EXCLUDED.fiyat,
             sma_50 = EXCLUDED.sma_50,
             sma_200 = EXCLUDED.sma_200,
@@ -35,9 +39,26 @@ def veriyi_kaydet(sembol, fiyat, sma50, sma200, fk, pd_dd, rsi, macd_line, macd_
             dmp = EXCLUDED.dmp,
             dmn = EXCLUDED.dmn,
             hacim_orani = EXCLUDED.hacim_orani,
+            
+            signal = EXCLUDED.signal,
+            score = EXCLUDED.score,
+            stop_price = EXCLUDED.stop_price,
+            target_price = EXCLUDED.target_price,
+            macd_hist_onceki = EXCLUDED.macd_hist_onceki,
+            hacim_onceki = EXCLUDED.hacim_onceki,
+
+            fiyat_onceki = EXCLUDED.fiyat_onceki,  -- Daily Change (Dünkü Kapanış)
+            rsi_onceki = EXCLUDED.rsi_onceki,
+            adx_onceki = EXCLUDED.adx_onceki,
+            atr = EXCLUDED.atr,
+            
             son_guncelleme = EXCLUDED.son_guncelleme;
         """
-        cursor.execute(sql, (temiz_sembol, fiyat, sma50, sma200, fk, pd_dd, rsi, macd_line, macd_signal, macd_hist, adx, dmp, dmn, hacim_orani))
+        cursor.execute(sql, (
+            temiz_sembol, fiyat, sma50, sma200, fk, pd_dd, rsi, macd_line, macd_signal, macd_hist, adx, dmp, dmn, hacim_orani,
+            signal, score, stop_price, target_price, macd_hist_onceki, hacim_onceki,
+            fiyat_onceki, rsi_onceki, adx_onceki, atr
+        ))
         conn.commit()
         cursor.close()
         conn.close()

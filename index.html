@@ -1,34 +1,40 @@
 <!DOCTYPE html>
 <html lang="tr">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>BorsaBot v1.5 - Technical Dashboard</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    
+
     <link rel="stylesheet" href="static/css/style.css">
 </head>
+
 <body class="bg-[#0b0f19] text-gray-100 font-sans antialiased min-h-screen selection:bg-blue-600 selection:text-white">
 
     <nav class="glass sticky top-0 z-50 border-b border-gray-800/60">
         <div class="max-w-[1920px] mx-auto px-4 sm:px-6 lg:px-8">
             <div class="flex items-center justify-between h-16">
                 <div class="flex items-center gap-3">
-                    <div class="bg-gradient-to-tr from-blue-700 to-blue-500 p-2 rounded-lg shadow-lg shadow-blue-900/40">
+                    <div
+                        class="bg-gradient-to-tr from-blue-700 to-blue-500 p-2 rounded-lg shadow-lg shadow-blue-900/40">
                         <i class="fa-solid fa-robot text-white text-xl"></i>
                     </div>
                     <div class="flex flex-col">
-                        <span class="font-bold text-xl tracking-wider leading-none">v1n<span class="text-blue-500">FU</span></span>
+                        <span class="font-bold text-xl tracking-wider leading-none">v1n<span
+                                class="text-blue-500">FU</span></span>
                         <span class="text-[10px] text-gray-500 font-mono">ALGO TRADING SYSTEM</span>
                     </div>
                 </div>
 
                 <div class="flex bg-gray-900/50 p-1 rounded-lg border border-gray-800">
-                    <button onclick="switchTab('market')" id="tab-market" class="tab-active px-6 py-2 rounded-md text-sm font-bold transition flex items-center gap-2">
+                    <button onclick="switchTab('market')" id="tab-market"
+                        class="tab-active px-6 py-2 rounded-md text-sm font-bold transition flex items-center gap-2">
                         <i class="fa-solid fa-globe"></i> Piyasa
                     </button>
-                    <button onclick="switchTab('portfolio')" id="tab-portfolio" class="tab-passive px-6 py-2 rounded-md text-sm font-bold transition flex items-center gap-2">
+                    <button onclick="switchTab('portfolio')" id="tab-portfolio"
+                        class="tab-passive px-6 py-2 rounded-md text-sm font-bold transition flex items-center gap-2">
                         <i class="fa-solid fa-wallet"></i> Portföyüm
                     </button>
                 </div>
@@ -37,16 +43,21 @@
                     <div class="flex items-center mr-2 border-r border-gray-700 pr-4">
                         <label class="relative inline-flex items-center cursor-pointer group">
                             <input type="checkbox" id="autoRefreshToggle" class="sr-only peer" checked>
-                            <div class="w-9 h-5 bg-gray-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-blue-600 group-hover:peer-checked:bg-blue-500"></div>
-                            <span class="ml-2 text-xs font-bold text-gray-400 peer-checked:text-blue-400 transition-colors">
+                            <div
+                                class="w-9 h-5 bg-gray-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-blue-600 group-hover:peer-checked:bg-blue-500">
+                            </div>
+                            <span
+                                class="ml-2 text-xs font-bold text-gray-400 peer-checked:text-blue-400 transition-colors">
                                 <i class="fa-solid fa-bolt"></i> Canlı
                             </span>
                         </label>
                     </div>
-                    <div id="connectionStatus" class="flex items-center gap-2 text-xs font-mono text-gray-500 bg-gray-900/50 px-3 py-1.5 rounded-full border border-gray-800">
+                    <div id="connectionStatus"
+                        class="flex items-center gap-2 text-xs font-mono text-gray-500 bg-gray-900/50 px-3 py-1.5 rounded-full border border-gray-800">
                         <span class="w-2 h-2 rounded-full bg-red-500 animate-pulse"></span> Bağlantı Yok
                     </div>
-                    <button onclick="verileriGetir()" class="bg-blue-600 hover:bg-blue-500 text-white px-5 py-2 rounded-lg transition flex items-center gap-2 text-sm font-semibold shadow-lg shadow-blue-900/20 active:scale-95">
+                    <button onclick="verileriGetir()"
+                        class="bg-blue-600 hover:bg-blue-500 text-white px-5 py-2 rounded-lg transition flex items-center gap-2 text-sm font-semibold shadow-lg shadow-blue-900/20 active:scale-95">
                         <i class="fa-solid fa-rotate"></i>
                     </button>
                 </div>
@@ -55,12 +66,12 @@
     </nav>
 
     <div class="max-w-[1920px] mx-auto p-4 lg:p-6">
-        
+
         <div id="market-view" class="grid grid-cols-12 gap-6">
-            
+
             <div class="col-span-12 xl:col-span-3 lg:col-span-3 space-y-6">
                 <div class="glass rounded-xl p-5 h-[calc(100vh-100px)] sticky top-24 overflow-y-auto flex flex-col">
-                    
+
                     <div class="flex items-center justify-between mb-6 border-b border-gray-800 pb-4">
                         <h2 class="text-sm font-bold text-white uppercase tracking-widest flex items-center gap-2">
                             <i class="fa-solid fa-filter text-blue-500"></i> Akıllı Filtreler
@@ -69,89 +80,140 @@
                             Temizle
                         </button>
                     </div>
-                    
+
                     <div class="space-y-5 flex-1 pr-1">
-                        
-                       
+
+                        <!-- NEW: Signal & Score Filters -->
+                        <div class="bg-blue-900/10 p-4 rounded-lg border border-blue-500/30 shadow-inner">
+                            <label class="text-xs text-blue-300 font-bold mb-3 block flex items-center gap-2">
+                                <i class="fa-solid fa-robot"></i> YAPAY ZEKA SİNYALLERİ
+                            </label>
+
+                            <div class="mb-3">
+                                <span class="text-[10px] text-gray-500 uppercase font-semibold mb-1 block">Sinyal
+                                    Türü</span>
+                                <select id="filterSignal"
+                                    class="w-full bg-gray-800/50 border border-gray-700 rounded p-2 text-xs text-white focus:border-blue-500 focus:bg-gray-800 outline-none transition">
+                                    <option value="All">Tümü</option>
+                                    <option value="STRONG_BUY">🚀 GÜÇLÜ AL (Strong Buy)</option>
+                                    <option value="BUY">✅ AL (Buy)</option>
+                                    <option value="WATCH">👀 İZLE (Watch)</option>
+                                    <option value="NO_TRADE">❌ İŞLEM YOK</option>
+                                </select>
+                            </div>
+
+                            <div class="mb-3">
+                                <span class="text-[10px] text-gray-500 uppercase font-semibold mb-1 block">Min Skor
+                                    (0-100)</span>
+                                <div class="flex items-center gap-2">
+                                    <input type="range" id="minScoreSlider" min="0" max="100" value="0"
+                                        class="w-full h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer">
+                                    <span id="minScoreValue"
+                                        class="text-xs font-mono font-bold text-blue-400 w-8 text-right">0</span>
+                                </div>
+                            </div>
+                        </div>
                         <div class="bg-[#131b2e] p-4 rounded-lg border border-gray-800/60 shadow-inner">
                             <label class="text-xs text-blue-400 font-bold mb-3 block flex items-center gap-2">
                                 <i class="fa-solid fa-chart-line"></i> TREND & HACİM
                             </label>
-                            
+
                             <div class="mb-3">
-                                <span class="text-[10px] text-gray-500 uppercase font-semibold mb-1 block">ADX (Trend Gücü)</span>
+                                <span class="text-[10px] text-gray-500 uppercase font-semibold mb-1 block">ADX (Trend
+                                    Gücü)</span>
                                 <div class="grid grid-cols-2 gap-2">
-                                    <input type="number" id="minAdx" placeholder="Min" class="bg-gray-800/50 border border-gray-700 rounded p-2 text-xs text-white focus:border-blue-500 focus:bg-gray-800 outline-none transition">
-                                    <input type="number" id="maxAdx" placeholder="Max" class="bg-gray-800/50 border border-gray-700 rounded p-2 text-xs text-white focus:border-blue-500 focus:bg-gray-800 outline-none transition">
+                                    <input type="number" id="minAdx" placeholder="Min"
+                                        class="bg-gray-800/50 border border-gray-700 rounded p-2 text-xs text-white focus:border-blue-500 focus:bg-gray-800 outline-none transition">
+                                    <input type="number" id="maxAdx" placeholder="Max"
+                                        class="bg-gray-800/50 border border-gray-700 rounded p-2 text-xs text-white focus:border-blue-500 focus:bg-gray-800 outline-none transition">
                                 </div>
                             </div>
 
                             <div class="mb-3">
-                                <span class="text-[10px] text-gray-500 uppercase font-semibold mb-1 block">Hacim Oranı (x Katı)</span>
+                                <span class="text-[10px] text-gray-500 uppercase font-semibold mb-1 block">Hacim Oranı
+                                    (x Katı)</span>
                                 <div class="grid grid-cols-2 gap-2">
-                                    <input type="number" id="minHacim" placeholder="Min (1.5)" class="bg-gray-800/50 border border-gray-700 rounded p-2 text-xs text-white focus:border-blue-500 focus:bg-gray-800 outline-none transition">
-                                    <input type="number" id="maxHacim" placeholder="Max" class="bg-gray-800/50 border border-gray-700 rounded p-2 text-xs text-white focus:border-blue-500 focus:bg-gray-800 outline-none transition">
+                                    <input type="number" id="minHacim" placeholder="Min (1.5)"
+                                        class="bg-gray-800/50 border border-gray-700 rounded p-2 text-xs text-white focus:border-blue-500 focus:bg-gray-800 outline-none transition">
+                                    <input type="number" id="maxHacim" placeholder="Max"
+                                        class="bg-gray-800/50 border border-gray-700 rounded p-2 text-xs text-white focus:border-blue-500 focus:bg-gray-800 outline-none transition">
                                 </div>
                             </div>
 
                             <div>
-                                <span class="text-[10px] text-gray-500 uppercase font-semibold mb-1 block">Yön (+DI / -DI)</span>
+                                <span class="text-[10px] text-gray-500 uppercase font-semibold mb-1 block">Yön (+DI /
+                                    -DI)</span>
                                 <div class="grid grid-cols-2 gap-2">
-                                    <input type="number" id="minDmp" placeholder="Min +DI" class="bg-gray-800/50 border border-gray-700 rounded p-2 text-xs text-emerald-400 placeholder-emerald-800/50 focus:border-emerald-500 focus:bg-gray-800 outline-none transition">
-                                    <input type="number" id="minDmn" placeholder="Min -DI" class="bg-gray-800/50 border border-gray-700 rounded p-2 text-xs text-red-400 placeholder-red-800/50 focus:border-red-500 focus:bg-gray-800 outline-none transition">
+                                    <input type="number" id="minDmp" placeholder="Min +DI"
+                                        class="bg-gray-800/50 border border-gray-700 rounded p-2 text-xs text-emerald-400 placeholder-emerald-800/50 focus:border-emerald-500 focus:bg-gray-800 outline-none transition">
+                                    <input type="number" id="minDmn" placeholder="Min -DI"
+                                        class="bg-gray-800/50 border border-gray-700 rounded p-2 text-xs text-red-400 placeholder-red-800/50 focus:border-red-500 focus:bg-gray-800 outline-none transition">
                                 </div>
                             </div>
                         </div>
 
-                        
+
                         <div class="bg-[#131b2e] p-4 rounded-lg border border-gray-800/60 shadow-inner">
                             <label class="text-xs text-purple-400 font-bold mb-3 block flex items-center gap-2">
                                 <i class="fa-solid fa-wave-square"></i> OSİLATÖRLER
                             </label>
 
                             <div class="mb-3">
-                                <span class="text-[10px] text-gray-500 uppercase font-semibold mb-1 block">RSI (14)</span>
+                                <span class="text-[10px] text-gray-500 uppercase font-semibold mb-1 block">RSI
+                                    (14)</span>
                                 <div class="grid grid-cols-2 gap-2">
-                                    <input type="number" id="minRsi" placeholder="Min (30)" class="bg-gray-800/50 border border-gray-700 rounded p-2 text-xs text-white focus:border-purple-500 focus:bg-gray-800 outline-none transition">
-                                    <input type="number" id="maxRsi" placeholder="Max (70)" class="bg-gray-800/50 border border-gray-700 rounded p-2 text-xs text-white focus:border-purple-500 focus:bg-gray-800 outline-none transition">
+                                    <input type="number" id="minRsi" placeholder="Min (30)"
+                                        class="bg-gray-800/50 border border-gray-700 rounded p-2 text-xs text-white focus:border-purple-500 focus:bg-gray-800 outline-none transition">
+                                    <input type="number" id="maxRsi" placeholder="Max (70)"
+                                        class="bg-gray-800/50 border border-gray-700 rounded p-2 text-xs text-white focus:border-purple-500 focus:bg-gray-800 outline-none transition">
                                 </div>
                             </div>
 
                             <div>
-                                <span class="text-[10px] text-gray-500 uppercase font-semibold mb-1 block">MACD Histogram</span>
+                                <span class="text-[10px] text-gray-500 uppercase font-semibold mb-1 block">MACD
+                                    Histogram</span>
                                 <div class="grid grid-cols-2 gap-2">
-                                    <input type="number" id="minMacdHist" placeholder="Min" class="bg-gray-800/50 border border-gray-700 rounded p-2 text-xs text-white focus:border-purple-500 focus:bg-gray-800 outline-none transition">
-                                    <input type="number" id="maxMacdHist" placeholder="Max" class="bg-gray-800/50 border border-gray-700 rounded p-2 text-xs text-white focus:border-purple-500 focus:bg-gray-800 outline-none transition">
+                                    <input type="number" id="minMacdHist" placeholder="Min"
+                                        class="bg-gray-800/50 border border-gray-700 rounded p-2 text-xs text-white focus:border-purple-500 focus:bg-gray-800 outline-none transition">
+                                    <input type="number" id="maxMacdHist" placeholder="Max"
+                                        class="bg-gray-800/50 border border-gray-700 rounded p-2 text-xs text-white focus:border-purple-500 focus:bg-gray-800 outline-none transition">
                                 </div>
                             </div>
                         </div>
 
-                        
+
                         <div class="bg-[#131b2e] p-4 rounded-lg border border-gray-800/60 shadow-inner">
                             <label class="text-xs text-amber-500 font-bold mb-3 block flex items-center gap-2">
                                 <i class="fa-solid fa-coins"></i> TEMEL VERİLER
                             </label>
 
                             <div class="mb-3">
-                                <span class="text-[10px] text-gray-500 uppercase font-semibold mb-1 block">F/K Oranı</span>
+                                <span class="text-[10px] text-gray-500 uppercase font-semibold mb-1 block">F/K
+                                    Oranı</span>
                                 <div class="grid grid-cols-2 gap-2">
-                                    <input type="number" id="minFk" placeholder="Min" class="bg-gray-800/50 border border-gray-700 rounded p-2 text-xs text-white focus:border-amber-500 focus:bg-gray-800 outline-none transition">
-                                    <input type="number" id="maxFk" placeholder="Max (10)" class="bg-gray-800/50 border border-gray-700 rounded p-2 text-xs text-white focus:border-amber-500 focus:bg-gray-800 outline-none transition">
+                                    <input type="number" id="minFk" placeholder="Min"
+                                        class="bg-gray-800/50 border border-gray-700 rounded p-2 text-xs text-white focus:border-amber-500 focus:bg-gray-800 outline-none transition">
+                                    <input type="number" id="maxFk" placeholder="Max (10)"
+                                        class="bg-gray-800/50 border border-gray-700 rounded p-2 text-xs text-white focus:border-amber-500 focus:bg-gray-800 outline-none transition">
                                 </div>
                             </div>
 
                             <div>
-                                <span class="text-[10px] text-gray-500 uppercase font-semibold mb-1 block">PD/DD Oranı</span>
+                                <span class="text-[10px] text-gray-500 uppercase font-semibold mb-1 block">PD/DD
+                                    Oranı</span>
                                 <div class="grid grid-cols-2 gap-2">
-                                    <input type="number" id="minPdDd" placeholder="Min" class="bg-gray-800/50 border border-gray-700 rounded p-2 text-xs text-white focus:border-amber-500 focus:bg-gray-800 outline-none transition">
-                                    <input type="number" id="maxPdDd" placeholder="Max (2)" class="bg-gray-800/50 border border-gray-700 rounded p-2 text-xs text-white focus:border-amber-500 focus:bg-gray-800 outline-none transition">
+                                    <input type="number" id="minPdDd" placeholder="Min"
+                                        class="bg-gray-800/50 border border-gray-700 rounded p-2 text-xs text-white focus:border-amber-500 focus:bg-gray-800 outline-none transition">
+                                    <input type="number" id="maxPdDd" placeholder="Max (2)"
+                                        class="bg-gray-800/50 border border-gray-700 rounded p-2 text-xs text-white focus:border-amber-500 focus:bg-gray-800 outline-none transition">
                                 </div>
                             </div>
                         </div>
                     </div>
 
                     <div class="pt-4 mt-auto">
-                        <button onclick="verileriGetir()" class="w-full bg-blue-600 hover:bg-blue-500 text-white py-3 rounded-lg font-bold text-sm transition shadow-lg shadow-blue-900/40 active:scale-95 flex items-center justify-center gap-2">
+                        <button onclick="verileriGetir()"
+                            class="w-full bg-blue-600 hover:bg-blue-500 text-white py-3 rounded-lg font-bold text-sm transition shadow-lg shadow-blue-900/40 active:scale-95 flex items-center justify-center gap-2">
                             <i class="fa-solid fa-magnifying-glass"></i> SONUÇLARI GETİR
                         </button>
                     </div>
@@ -159,9 +221,10 @@
             </div>
 
             <div class="col-span-12 xl:col-span-9 lg:col-span-9">
-                
+
                 <div id="messageArea" class="hidden mb-4">
-                    <div class="bg-amber-500/10 border border-amber-500/20 text-amber-200 p-4 rounded-lg flex items-center gap-3">
+                    <div
+                        class="bg-amber-500/10 border border-amber-500/20 text-amber-200 p-4 rounded-lg flex items-center gap-3">
                         <i class="fa-solid fa-triangle-exclamation text-xl"></i>
                         <div>
                             <h3 class="font-bold text-sm">Offline Mod</h3>
@@ -174,24 +237,63 @@
                     <div class="overflow-x-auto">
                         <table class="w-full text-left border-collapse">
                             <thead>
-                                <tr class="bg-[#0f1522] text-gray-400 text-[11px] uppercase tracking-wider border-b border-gray-800 h-12">
-                                    <th class="p-4 font-bold text-white sticky left-0 bg-[#0f1522] z-10 border-r border-gray-800/50">Sembol</th>
-                                    <th class="p-4 font-semibold">Fiyat</th>
-                                    <th class="p-4 font-semibold text-blue-400">SMA 50</th>
-                                    <th class="p-4 font-semibold text-yellow-400">SMA 200</th>
-                                    <th class="p-4 font-semibold">RSI (14)</th>
-                                    <th class="p-4 font-semibold text-center bg-blue-900/10">Trend (ADX)</th>
-                                    <th class="p-4 font-semibold text-center">Hacim</th>
-                                    <th class="p-4 font-semibold">MACD Hist</th>
-                                    <th class="p-4 font-semibold">MACD Sinyal</th>
-                                    <th class="p-4 font-semibold text-amber-500/80">F/K</th>
-                                    <th class="p-4 font-semibold text-amber-500/80">PD/DD</th>
-                                   
-                                    <th class="p-4 font-semibold">Tarih</th>
+                                <tr
+                                    class="bg-[#0f1522] text-gray-400 text-[11px] uppercase tracking-wider border-b border-gray-800 h-12">
+                                    <th onclick="sortTable('sembol')"
+                                        class="p-4 font-bold text-white sticky left-0 bg-[#0f1522] z-10 border-r border-gray-800/50 cursor-pointer hover:text-blue-400 select-none">
+                                        Sembol <i class="fa-solid fa-sort text-[10px] opacity-50 ml-1"></i></th>
+                                    <th onclick="sortTable('fiyat')"
+                                        class="p-4 font-semibold cursor-pointer hover:text-white select-none">Fiyat</th>
+                                    <th onclick="sortTable('sma50')"
+                                        class="p-4 font-semibold text-blue-400 cursor-pointer hover:text-white select-none">
+                                        SMA 50</th>
+                                    <th onclick="sortTable('sma200')"
+                                        class="p-4 font-semibold text-yellow-400 cursor-pointer hover:text-white select-none">
+                                        SMA 200</th>
+                                    <th onclick="sortTable('rsi')"
+                                        class="p-4 font-semibold cursor-pointer hover:text-white select-none">RSI (14)
+                                    </th>
+                                    <th onclick="sortTable('adx')"
+                                        class="p-4 font-semibold text-center bg-blue-900/10 cursor-pointer hover:text-white select-none">
+                                        Trend (ADX)</th>
+                                    <th onclick="sortTable('hacimOrani')"
+                                        class="p-4 font-semibold text-center cursor-pointer hover:text-white select-none">
+                                        Hacim</th>
+                                    <th onclick="sortTable('macdHist')"
+                                        class="p-4 font-semibold cursor-pointer hover:text-white select-none">MACD Hist
+                                    </th>
+                                    <th onclick="sortTable('macdSignal')"
+                                        class="p-4 font-semibold cursor-pointer hover:text-white select-none">MACD
+                                        Sinyal</th>
+                                    <th onclick="sortTable('fk')"
+                                        class="p-4 font-semibold text-amber-500/80 cursor-pointer hover:text-white select-none">
+                                        F/K</th>
+                                    <th onclick="sortTable('pdDd')"
+                                        class="p-4 font-semibold text-amber-500/80 cursor-pointer hover:text-white select-none">
+                                        PD/DD</th>
+
+                                    <!-- NEW: Trading Signal Columns -->
+                                    <th onclick="sortTable('signal')"
+                                        class="p-4 font-semibold text-center cursor-pointer hover:text-white select-none">
+                                        Sinyal</th>
+                                    <th onclick="sortTable('score')"
+                                        class="p-4 font-semibold text-center cursor-pointer hover:text-white select-none">
+                                        Skor</th>
+                                    <th onclick="sortTable('stopPrice')"
+                                        class="p-4 font-semibold text-red-400 cursor-pointer hover:text-white select-none">
+                                        Stop</th>
+                                    <th onclick="sortTable('targetPrice')"
+                                        class="p-4 font-semibold text-emerald-400 cursor-pointer hover:text-white select-none">
+                                        Hedef</th>
+
+                                    <th onclick="sortTable('sonGuncelleme')"
+                                        class="p-4 font-semibold cursor-pointer hover:text-white select-none">Tarih</th>
                                 </tr>
                             </thead>
                             <tbody id="hisseTablosu" class="divide-y divide-gray-800 text-sm font-medium">
-                                <tr><td colspan="12" class="p-12 text-center text-gray-500">Veriler bekleniyor...</td></tr>
+                                <tr>
+                                    <td colspan="12" class="p-12 text-center text-gray-500">Veriler bekleniyor...</td>
+                                </tr>
                             </tbody>
                         </table>
                     </div>
@@ -200,14 +302,17 @@
         </div>
 
         <div id="portfolio-view" class="hidden space-y-6">
-            
+
             <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-                <div class="glass p-6 rounded-xl flex items-center justify-between bg-gradient-to-br from-gray-900 to-blue-900/20">
+                <div
+                    class="glass p-6 rounded-xl flex items-center justify-between bg-gradient-to-br from-gray-900 to-blue-900/20">
                     <div>
-                        <p class="text-gray-400 text-xs uppercase font-bold tracking-widest mb-1">Toplam Portföy Değeri</p>
+                        <p class="text-gray-400 text-xs uppercase font-bold tracking-widest mb-1">Toplam Portföy Değeri
+                        </p>
                         <h2 id="totalBalance" class="text-3xl font-bold text-white font-mono">₺0.00</h2>
                     </div>
-                    <div class="bg-blue-500/20 p-3 rounded-full text-blue-400"><i class="fa-solid fa-wallet text-2xl"></i></div>
+                    <div class="bg-blue-500/20 p-3 rounded-full text-blue-400"><i
+                            class="fa-solid fa-wallet text-2xl"></i></div>
                 </div>
 
                 <div class="glass p-6 rounded-xl flex items-center justify-between">
@@ -216,7 +321,8 @@
                         <h2 id="totalPnL" class="text-3xl font-bold text-gray-200 font-mono">₺0.00</h2>
                         <span id="totalPnLPercent" class="text-sm font-bold font-mono">0.00%</span>
                     </div>
-                    <div id="pnlIcon" class="bg-gray-800 p-3 rounded-full text-gray-500"><i class="fa-solid fa-chart-pie text-2xl"></i></div>
+                    <div id="pnlIcon" class="bg-gray-800 p-3 rounded-full text-gray-500"><i
+                            class="fa-solid fa-chart-pie text-2xl"></i></div>
                 </div>
 
                 <div class="glass p-6 rounded-xl flex items-center justify-between">
@@ -224,14 +330,16 @@
                         <p class="text-gray-400 text-xs uppercase font-bold tracking-widest mb-1">Hisse Çeşidi</p>
                         <h2 id="stockCount" class="text-3xl font-bold text-white font-mono">0</h2>
                     </div>
-                    <div class="bg-purple-500/20 p-3 rounded-full text-purple-400"><i class="fa-solid fa-layer-group text-2xl"></i></div>
+                    <div class="bg-purple-500/20 p-3 rounded-full text-purple-400"><i
+                            class="fa-solid fa-layer-group text-2xl"></i></div>
                 </div>
             </div>
 
             <div class="glass rounded-xl overflow-hidden shadow-2xl">
                 <div class="px-6 py-4 border-b border-gray-800 flex justify-between items-center bg-[#0f1522]">
                     <h3 class="font-bold text-white flex items-center gap-2">
-                        <img src="https://getmidas.com/wp-content/uploads/2021/05/midas-favicon.png" class="w-5 h-5 grayscale opacity-80" alt="Midas">
+                        <img src="https://getmidas.com/wp-content/uploads/2021/05/midas-favicon.png"
+                            class="w-5 h-5 grayscale opacity-80" alt="Midas">
                         Midas Varlıklarım
                     </h3>
                     <span class="text-xs text-gray-500">Canlı Veri</span>
@@ -239,7 +347,8 @@
                 <div class="overflow-x-auto">
                     <table class="w-full text-left border-collapse">
                         <thead>
-                            <tr class="bg-gray-900/50 text-gray-400 text-[11px] uppercase tracking-wider border-b border-gray-800">
+                            <tr
+                                class="bg-gray-900/50 text-gray-400 text-[11px] uppercase tracking-wider border-b border-gray-800">
                                 <th class="p-4 font-bold text-white">Sembol</th>
                                 <th class="p-4 font-semibold text-right">Adet</th>
                                 <th class="p-4 font-semibold text-right">Ort. Maliyet</th>
@@ -251,7 +360,7 @@
                             </tr>
                         </thead>
                         <tbody id="portfolioTablosu" class="divide-y divide-gray-800 text-sm font-medium">
-                            </tbody>
+                        </tbody>
                     </table>
                 </div>
             </div>
@@ -260,4 +369,5 @@
 
     <script src="static/js/script.js"></script>
 </body>
+
 </html>

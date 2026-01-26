@@ -5,6 +5,8 @@ import time
 import random
 from concurrent.futures import ThreadPoolExecutor
 
+import trading_engine
+
 MAX_WORKERS = 3
 
 def hisse_islemcisi(sembol):
@@ -12,9 +14,36 @@ def hisse_islemcisi(sembol):
     try:
         sonuc = analiz.veri_cek_ve_hesapla(sembol)
         if sonuc:
-            fiyat, sma50, sma200, fk, pd_dd, rsi, macd_line, macd_signal, macd_hist, adx, dmp, dmn, hacim_orani = sonuc
-            database.veriyi_kaydet(sembol, fiyat, sma50, sma200, fk, pd_dd, rsi, macd_line, macd_signal, macd_hist, adx, dmp, dmn, hacim_orani)
-            print(f"✅ {sembol} SUCCESS!")
+            # Unpack expanded results from analiz.py
+            (fiyat, sma50, sma200, fk, pd_dd, rsi, macd_line, macd_signal, macd_hist, 
+             adx, dmp, dmn, hacim_orani, 
+             swing_high, swing_low, macd_hist_onceki, hacim_onceki, 
+             sma50_onceki, rsi_onceki, fiyat_onceki, adx_onceki, atr) = sonuc
+
+            # Prepare data dictionary for trading engine
+            data_dict = {
+                'sembol': sembol, 'fiyat': fiyat, 'sma50': sma50, 'sma200': sma200,
+                'fk': fk, 'pd_dd': pd_dd, 'rsi': rsi,
+                'macd_line': macd_line, 'macd_signal': macd_signal, 'macd_hist': macd_hist,
+                'adx': adx, 'dmp': dmp, 'dmn': dmn, 'hacim_orani': hacim_orani,
+                'swing_low': swing_low, 'macd_hist_onceki': macd_hist_onceki,
+                'hacim_onceki': hacim_onceki, 'sma50_onceki': sma50_onceki,
+                'rsi_onceki': rsi_onceki, 'fiyat_onceki': fiyat_onceki, 
+                'adx_onceki': adx_onceki, 'atr': atr
+            }
+
+            # Evaluate with Trading Engine
+            signal, score, stop_price, target_price = trading_engine.evaluate_stock(data_dict)
+
+            # Save to Database
+            database.veriyi_kaydet(
+                sembol, fiyat, sma50, sma200, fk, pd_dd, rsi, macd_line, macd_signal, macd_hist, 
+                adx, dmp, dmn, hacim_orani,
+                signal, score, stop_price, target_price, macd_hist_onceki, hacim_onceki,
+                fiyat_onceki, rsi_onceki, adx_onceki, atr
+            )
+            
+            print(f"✅ {sembol} -> Signal: {signal} | Score: {score}")
             time.sleep(random.uniform(0.5, 1.5))
             return None
         else:

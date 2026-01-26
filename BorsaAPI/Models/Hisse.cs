@@ -21,5 +21,12 @@ namespace BorsaAPI.Models
         public decimal FiyatOnceki { get; set; }
         public decimal RsiOnceki { get; set; }
         public decimal AdxOnceki { get; set; }
+        public string Signal { get; set; } = "NO_TRADE";
+        public int Score { get; set; }
+        public decimal StopPrice { get; set; }
+        public decimal TargetPrice { get; set; }
+        public decimal MacdHistOnceki { get; set; }
+        public decimal HacimOnceki { get; set; }
+        public decimal Atr { get; set; }
     }
 }

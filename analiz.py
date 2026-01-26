@@ -89,6 +89,7 @@ def veri_cek_ve_hesapla(sembol):
         df.ta.rsi(length=14, append=True)
         df.ta.macd(fast=12, slow=26, signal=9, append=True)
         df.ta.adx(length=14, append=True)
+        df.ta.atr(length=14, append=True)
 
         return (
             safe_float(guncel_fiyat), 
@@ -103,7 +104,17 @@ def veri_cek_ve_hesapla(sembol):
             safe_float(df['ADX_14'].iloc[-1]),
             safe_float(df['DMP_14'].iloc[-1]), 
             safe_float(df['DMN_14'].iloc[-1]), 
-            hacim_analizi(df)
+            hacim_analizi(df),
+            # NEW: Trading Engine Data
+            safe_float(df['High'].rolling(20).max().iloc[-1]), # Swing High (not used yet but good to have)
+            safe_float(df['Low'].rolling(20).min().iloc[-1]),  # Swing Low (for stop loss)
+            safe_float(df['MACDh_12_26_9'].iloc[-2]),          # MACD Hist Previous (momentum check)
+            hacim_analizi(df[:-1]),                            # Volume Ratio Previous (divergence check)
+            safe_float(df['SMA_50'].iloc[-2]),                 # SMA50 Previous (slope check)
+            safe_float(df['RSI_14'].iloc[-2]),                 # RSI Previous
+            safe_float(df['Close'].iloc[-2]),                   # Price Previous
+            safe_float(df['ADX_14'].iloc[-2]),                  # ADX Previous
+            safe_float(df['ATRr_14'].iloc[-1])                 # ATR (Average True Range)
         )
 
     except Exception as e:
