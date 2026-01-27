@@ -1,14 +1,35 @@
-
+# Python
 __pycache__/
-*.py[cod]
+*.pyc
+*.pyo
+*.pyd
+.Python
+env/
 venv/
 .env
 
-
-bin/
-obj/
-.vscode/
-
-
-config.py
+# Configuration (Sensitive)
+src/config.py
 BorsaAPI/appsettings.json
+
+# Data (Heavy/Local)
+data/
+postgres-data/
+*.parquet
+*.csv
+*.h5
+
+# IDEs
+.vscode/
+.idea/
+*.sln.DotSettings.user
+
+# C# / .NET
+BorsaAPI/bin/
+BorsaAPI/obj/
+.vs/
+*.user
+
+# OS
+.DS_Store
+Thumbs.db

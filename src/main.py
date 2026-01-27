@@ -1,11 +1,18 @@
-from config import HISSELER
-import analiz
-import database
+import sys
+import os
 import time
 import random
+import schedule
 from concurrent.futures import ThreadPoolExecutor
 
-import trading_engine
+# Determine local directory and add to path
+sys.path.append(os.path.dirname(os.path.abspath(__file__)))
+
+import config 
+from core import database
+from core import analiz
+from core import trading_engine
+from config import HISSELER
 
 MAX_WORKERS = 3
 
@@ -101,8 +108,8 @@ if __name__ == "__main__":
     while True:
         try:
             sistemi_calistir()
-            print("⏳ Bir sonraki güncelleme için 60 saniye bekleniyor...") 
-            time.sleep(50000) 
+            print("⏳ Bir sonraki güncelleme için 1 gün bekleniyor...") 
+            time.sleep(86400) 
         except KeyboardInterrupt:
             print("\n🛑 Program durduruldu.")
             break

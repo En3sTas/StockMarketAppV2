@@ -16,7 +16,7 @@ def hard_filters(data):
         # 3. Momentum Base Requirements
         if data['rsi'] <= 35: return False
         if data['macd_hist'] < 0: return False
-        if data['adx'] <= 20: return False
+        if data['adx'] <= 25: return False # Stricter Trend Filter (Was 20)
 
         # 4. Directional Filter (NEW: Hard Reject if Sellers > Buyers)
         if data['dmp'] < data['dmn']:
@@ -222,54 +222,55 @@ def validate_strong_buy_categories(category_scores):
     return categories_passed >= 3
 
 def generate_signal(total_score, category_scores):
-    if total_score >= 75:
+    # --- AYAR 3: Barajı Yükselt ---
+    # Backtest gösterdi ki 65-69 puan arası para kaybettiriyor (-0.20 Avg Return).
+    # Bu yüzden giriş seviyesini 70'e çekiyoruz.
+    
+    if total_score >= 80: # 80 üzeri Strong Buy olsun
         if validate_strong_buy_categories(category_scores):
             return 'STRONG_BUY'
         else:
-            return 'BUY' # High score but not diverse enough
-    elif total_score >= 65:
+            return 'BUY'
+    elif total_score >= 70: # ESKİSİ 65 İDİ -> ŞİMDİ 70
         return 'BUY'
-    elif total_score >= 55:
-        return 'WATCH'
+    elif total_score >= 60:
+        return 'WATCH' # 60-69 arası artık sadece izleme listesinde
     else:
         return 'NO_TRADE'
 
 def calculate_stop_and_target(fiyat, atr, rsi, adx):
     """
-    Dynamic Stop/Target using ATR & RSI/ADX
-    Stop: Close - 2*ATR
-    Target:
-      - Standard: 1:2 ratio
-      - High RSI (>70) & High ADX (>30): 1:1.5 (Strong Trend, allow run)
-      - High RSI (>70) & Low ADX: 1:1.0 (Overbought + Weak, take profit early)
-      - High RSI (>60): 1:1.5 (Heating up)
+    Final Tuning: Balanced Approach
+    Stop: 2.5 ATR (Sweet spot between 2.0 and 3.0)
+    Target: Boosted back to ~2.0x because Win Rate is high (>55%)
     """
     if atr <= 0:
-        atr = fiyat * 0.03 # Fallback if ATR is missing (3% volatility assumption)
+        atr = fiyat * 0.03 
         
-    stop_price = fiyat - (2 * atr)
-    
-    # Safety Check: Don't let stop be negative
+    # --- AYAR 1: Stop Mesafesi (2.5 ATR) ---
+    # 3.0 çok genişti (-4.7% zarar yazıyordu). 
+    # 2.0 çok dardı (%70 stop oluyordu).
+    # 2.5 ATR "Altın Orta Yol"dur.
+    stop_distance = 2.5 * atr
+    stop_price = fiyat - stop_distance
     stop_price = max(0.01, stop_price)
             
     risk = fiyat - stop_price
     
-    # --- Target Logic (RSI + ADX) ---
-    multiplier = 2.0  # Standard Target (1:2)
+    # --- AYAR 2: Hedef Çarpanı (Target Multiplier) ---
+    # Win Rate'imiz %56 olduğu için 1:1.5 oranına razı olmamıza gerek yok.
+    # 1:2 oranını hedefleyebiliriz.
     
+    multiplier = 2.0  # Standart Hedef (Geri yükselttik)
+    
+    # RSI İnce Ayarı
     if rsi > 70:
-        if adx > 30: 
-            # RSI high BUT Trend is very strong (Super Trend)!
-            # Don't cut target too much, ride the wave.
-            multiplier = 1.5 
+        if adx > 30:
+            multiplier = 2.0 # Güçlü trend, korkma, bırak koşsun.
         else:
-            # RSI high AND Trend weak/tired.
-            # Take profit immediately (Hit & Run).
-            multiplier = 1.0 
-            
+            multiplier = 1.2 # Sadece şişmiş, vur-kaç yap.
     elif rsi > 60:
-        # Heating up
-        multiplier = 1.5
+        multiplier = 1.8 # Hafif temkinli
         
     target_price = fiyat + (risk * multiplier)
     
