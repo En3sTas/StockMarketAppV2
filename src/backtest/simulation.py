@@ -18,13 +18,13 @@ import os
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 RESULTS_FILE = os.path.join(BASE_DIR, "data", "backtest_results.csv")
 
-def run_portfolio_simulation():
+def run_portfolio_simulation(results_file=RESULTS_FILE):
     # ...
     # 1. Load Trades
     try:
-        df = pd.read_csv(RESULTS_FILE)
+        df = pd.read_csv(results_file)
     except:
-        print(f"❌ {RESULTS_FILE} not found!")
+        print(f"❌ {results_file} not found!")
         return
 
     # Convert dates

@@ -11,8 +11,12 @@ sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 import config 
 from core import database
 from core import analiz
-from core import trading_engine
+# from core import trading_engine # Deprecated
 from config import HISSELER
+
+# Import New Engines
+from core import trend_engine
+from core import scout_engine
 
 MAX_WORKERS = 3
 
@@ -39,18 +43,30 @@ def hisse_islemcisi(sembol):
                 'adx_onceki': adx_onceki, 'atr': atr
             }
 
-            # Evaluate with Trading Engine
-            signal, score, stop_price, target_price = trading_engine.evaluate_stock(data_dict)
+            # --- HYBRID STRATEGY SELECTION ---
+            # Determine which engine to use based on Market Regime
+            
+            strategy = "NONE"
+            
+            if sma50 > sma200:
+                # 📈 BULL MARKET REGIME -> Trend Engine
+                strategy = "TREND"
+                signal, score, stop_price, target_price = trend_engine.evaluate_stock(data_dict)
+            else:
+                # 📉 BEAR/RECOVERY REGIME -> Scout Engine
+                strategy = "SCOUT"
+                signal, score, stop_price, target_price = scout_engine.evaluate_stock(data_dict)
 
             # Save to Database
             database.veriyi_kaydet(
                 sembol, fiyat, sma50, sma200, fk, pd_dd, rsi, macd_line, macd_signal, macd_hist, 
                 adx, dmp, dmn, hacim_orani,
                 signal, score, stop_price, target_price, macd_hist_onceki, hacim_onceki,
-                fiyat_onceki, rsi_onceki, adx_onceki, atr
+                fiyat_onceki, rsi_onceki, adx_onceki, atr,
+                strategy=strategy
             )
             
-            print(f"✅ {sembol} -> Signal: {signal} | Score: {score}")
+            print(f"✅ {sembol} [{strategy}] -> Signal: {signal} | Score: {score}")
             time.sleep(random.uniform(0.5, 1.5))
             return None
         else:

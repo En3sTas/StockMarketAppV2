@@ -28,5 +28,6 @@ namespace BorsaAPI.Models
         public decimal MacdHistOnceki { get; set; }
         public decimal HacimOnceki { get; set; }
         public decimal Atr { get; set; }
+        public string Strategy { get; set; } = "NONE";
     }
 }

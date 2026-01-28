@@ -22,8 +22,8 @@ namespace BorsaAPI.Services
                                              
                                              decimal? maxAdx, decimal? minAdx,
                                              decimal? maxDmp, decimal? minDmp,
-                                             decimal? maxDmn, decimal? minDmn
-                                             ,decimal? maxHacimOrani, decimal? minHacimOrani, string? signal)
+                                             decimal? maxDmn, decimal? minDmn,
+                                             decimal? maxHacimOrani, decimal? minHacimOrani, string? signal, string? strategy)
         {
             List<Hisse> hisseListesi = new List<Hisse>();
 
@@ -38,6 +38,12 @@ namespace BorsaAPI.Services
                 {
                     sqlBuilder.Append(" AND signal = @signal");
                     cmd.Parameters.AddWithValue("@signal", signal);
+                }
+
+                if (!string.IsNullOrEmpty(strategy) && strategy != "All")
+                {
+                    sqlBuilder.Append(" AND strategy = @strategy");
+                    cmd.Parameters.AddWithValue("@strategy", strategy);
                 }
                 
                 if (minFk.HasValue)
@@ -180,6 +186,7 @@ namespace BorsaAPI.Services
                         hisse.TargetPrice = reader.IsDBNull(reader.GetOrdinal("target_price")) ? 0 : reader.GetDecimal(reader.GetOrdinal("target_price"));
                         hisse.MacdHistOnceki = reader.IsDBNull(reader.GetOrdinal("macd_hist_onceki")) ? 0 : reader.GetDecimal(reader.GetOrdinal("macd_hist_onceki"));
                         hisse.HacimOnceki = reader.IsDBNull(reader.GetOrdinal("hacim_onceki")) ? 0 : reader.GetDecimal(reader.GetOrdinal("hacim_onceki"));
+                        hisse.Strategy = reader.IsDBNull(reader.GetOrdinal("strategy")) ? "NONE" : reader.GetString(reader.GetOrdinal("strategy"));
 
                         hisseListesi.Add(hisse);
                     }

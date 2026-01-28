@@ -5,9 +5,9 @@ import os
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 FILE_PATH = os.path.join(BASE_DIR, "data", "backtest_results.csv")
 
-def run_deep_dive():
+def run_deep_dive(results_file=FILE_PATH):
     try:
-        df = pd.read_csv(FILE_PATH)
+        df = pd.read_csv(results_file)
     except Exception as e:
         print(f"Error reading CSV: {e}")
         return

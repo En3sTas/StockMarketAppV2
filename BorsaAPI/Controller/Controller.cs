@@ -37,7 +37,8 @@ namespace BorsaAPI.Controllers
             [FromQuery] decimal? minDmn,
             [FromQuery] decimal? maxHacimOrani,
             [FromQuery] decimal? minHacimOrani,
-            [FromQuery] string? signal)
+            [FromQuery] string? signal,
+            [FromQuery] string? strategy)
         {
             try
             {
@@ -51,13 +52,25 @@ namespace BorsaAPI.Controllers
                                                                  maxAdx, minAdx,
                                                                  maxDmp, minDmp,
                                                                  maxDmn, minDmn,
-                                                                 maxHacimOrani, minHacimOrani, signal);
+                                                                 maxHacimOrani, minHacimOrani, signal, strategy);
                 return Ok(veriler);
             }
             catch (Exception ex)
             {
                 return StatusCode(500, "Error: " + ex.Message);
             }
+        }
+
+        [HttpGet("/api/market/trend")]
+        public IActionResult GetTrend()
+        {
+            return GetHisseler(null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null, "TREND");
+        }
+
+        [HttpGet("/api/market/scout")]
+        public IActionResult GetScout()
+        {
+            return GetHisseler(null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null, "SCOUT");
         }
     }
 }

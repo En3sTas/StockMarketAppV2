@@ -13,6 +13,6 @@ namespace BorsaAPI.Services
             decimal? maxMacdHist, decimal? minMacdHist, decimal? maxAdx, decimal? minAdx,
             decimal? maxDmp, decimal? minDmp,
             decimal? maxDmn, decimal? minDmn,
-            decimal? maxHacimOrani, decimal? minHacimOrani, string? signal);
+            decimal? maxHacimOrani, decimal? minHacimOrani, string? signal, string? strategy);
     }
 }

@@ -2,7 +2,8 @@
 const API_BASE_URL = "http://localhost:5158/api/hisseler";
 
 // Portföy Verileri (Sabit)
-const MY_PORTFOLIO = [
+// Portföy Verileri (LocalStorage'dan Başlat)
+let MY_PORTFOLIO = JSON.parse(localStorage.getItem('myPortfolio')) || [
     { sembol: "TUPRS", adet: 22, maliyet: 183.20 },
     { sembol: "TOASO", adet: 20, maliyet: 245.90 },
     { sembol: "YKBNK", adet: 137, maliyet: 37.12 },
@@ -10,26 +11,97 @@ const MY_PORTFOLIO = [
     { sembol: "BRSAN", adet: 13, maliyet: 528.50 }
 ];
 
+// LocalStorage Kaydetme Fonksiyonu
+function savePortfolio() {
+    localStorage.setItem('myPortfolio', JSON.stringify(MY_PORTFOLIO));
+    renderPortfolio();
+}
+
+// Yeni Hisse Ekleme
+function addToPortfolio(symbol, count, cost) {
+    if (!symbol || count <= 0 || cost < 0) {
+        alert("Lütfen geçerli değerler giriniz!");
+        return;
+    }
+
+    // Varsa güncelle, yoksa ekle
+    const existing = MY_PORTFOLIO.find(p => p.sembol === symbol);
+    if (existing) {
+        // Ağırlıklı ortalama maliyet hesabı
+        const totalCost = (existing.adet * existing.maliyet) + (count * cost);
+        const totalCount = existing.adet + count;
+        existing.maliyet = totalCost / totalCount;
+        existing.adet = totalCount;
+    } else {
+        MY_PORTFOLIO.push({ sembol: symbol, adet: count, maliyet: cost });
+    }
+
+    savePortfolio();
+    closeAddModal();
+}
+
+// Hiss Silme
+function removeFromPortfolio(symbol) {
+    if (confirm(`${symbol} hissesini portföyden silmek istediğinize emin misiniz?`)) {
+        MY_PORTFOLIO = MY_PORTFOLIO.filter(p => p.sembol !== symbol);
+        savePortfolio();
+    }
+}
+
+// Modal İşlemleri
+function openAddModal() { document.getElementById('addStockModal').classList.remove('hidden'); }
+function closeAddModal() { document.getElementById('addStockModal').classList.add('hidden'); }
+
+function submitAddStock() {
+    const sym = document.getElementById('addSymbol').value.toUpperCase();
+    const qty = parseFloat(document.getElementById('addQuantity').value);
+    const cost = parseFloat(document.getElementById('addCost').value);
+    addToPortfolio(sym, qty, cost);
+
+    // Temizle
+    document.getElementById('addSymbol').value = '';
+    document.getElementById('addQuantity').value = '';
+    document.getElementById('addCost').value = '';
+}
+
 let globalData = [];
+let currentTab = 'trend';
 
 // Tab Değiştirme Fonksiyonu
 function switchTab(tabName) {
+    currentTab = tabName;
     const marketView = document.getElementById('market-view');
     const portfolioView = document.getElementById('portfolio-view');
-    const tabMarket = document.getElementById('tab-market');
+
+    // Tab Buttons
+    const tabTrend = document.getElementById('tab-trend');
+    const tabScout = document.getElementById('tab-scout');
     const tabPortfolio = document.getElementById('tab-portfolio');
 
-    if (tabName === 'market') {
-        marketView.classList.remove('hidden');
-        portfolioView.classList.add('hidden');
-        tabMarket.className = "tab-active px-6 py-2 rounded-md text-sm font-bold transition flex items-center gap-2";
-        tabPortfolio.className = "tab-passive px-6 py-2 rounded-md text-sm font-bold transition flex items-center gap-2";
-    } else {
+    // Reset Classes
+    const activeClass = "tab-active px-6 py-2 rounded-md text-sm font-bold transition flex items-center gap-2";
+    const passiveClass = "tab-passive px-6 py-2 rounded-md text-sm font-bold transition flex items-center gap-2 opacity-70 hover:opacity-100";
+
+    tabTrend.className = passiveClass + " hover:text-emerald-400";
+    tabScout.className = passiveClass + " hover:text-orange-400";
+    tabPortfolio.className = passiveClass;
+
+    if (tabName === 'portfolio') {
         marketView.classList.add('hidden');
         portfolioView.classList.remove('hidden');
-        tabMarket.className = "tab-passive px-6 py-2 rounded-md text-sm font-bold transition flex items-center gap-2";
-        tabPortfolio.className = "tab-active px-6 py-2 rounded-md text-sm font-bold transition flex items-center gap-2";
-        renderPortfolio();
+        tabPortfolio.className = activeClass;
+        // Portföy sekmesi için tüm verileri çekelim
+        verileriGetir();
+    } else {
+        marketView.classList.remove('hidden');
+        portfolioView.classList.add('hidden');
+
+        if (tabName === 'trend') {
+            tabTrend.className = activeClass + " text-emerald-400";
+        } else if (tabName === 'scout') {
+            tabScout.className = activeClass + " text-orange-400";
+        }
+        verileriGetir(); // Reload data for the active tab
     }
 }
 
@@ -40,19 +112,30 @@ async function verileriGetir() {
     const params = new URLSearchParams();
 
     // Filtre değerlerini URL parametrelerine ekle
-    addParam(params, 'minFk', 'minFk'); addParam(params, 'maxFk', 'maxFk');
-    addParam(params, 'minPdDd', 'minPdDd'); addParam(params, 'maxPdDd', 'maxPdDd');
-    addParam(params, 'minRsi', 'minRsi'); addParam(params, 'maxRsi', 'maxRsi');
-    addParam(params, 'minMacdHist', 'minMacdHist'); addParam(params, 'maxMacdHist', 'maxMacdHist');
-    addParam(params, 'minAdx', 'minAdx'); addParam(params, 'maxAdx', 'maxAdx');
-    addParam(params, 'minHacimOrani', 'minHacim'); addParam(params, 'maxHacimOrani', 'maxHacim');
-    addParam(params, 'minDmp', 'minDmp'); addParam(params, 'minDmn', 'minDmn');
-    addParam(params, 'signal', 'filterSignal'); // NEW: Signal parameter
+    // Portföy modunda filtreleri KULLANMA (tüm verileri al)
+    if (currentTab !== 'portfolio') {
+        addParam(params, 'minFk', 'minFk'); addParam(params, 'maxFk', 'maxFk');
+        addParam(params, 'minPdDd', 'minPdDd'); addParam(params, 'maxPdDd', 'maxPdDd');
+        addParam(params, 'minRsi', 'minRsi'); addParam(params, 'maxRsi', 'maxRsi');
+        addParam(params, 'minMacdHist', 'minMacdHist'); addParam(params, 'maxMacdHist', 'maxMacdHist');
+        addParam(params, 'minAdx', 'minAdx'); addParam(params, 'maxAdx', 'maxAdx');
+        addParam(params, 'minHacimOrani', 'minHacim'); addParam(params, 'maxHacimOrani', 'maxHacim');
+        addParam(params, 'minDmp', 'minDmp'); addParam(params, 'minDmn', 'minDmn');
+        addParam(params, 'signal', 'filterSignal');
+    }
 
     try {
         // ... (loading logic)
 
-        const response = await fetch(`${API_BASE_URL}?${params.toString()}`);
+        let url = API_BASE_URL;
+        if (currentTab === 'trend') {
+            url = "http://localhost:5158/api/market/trend";
+        } else if (currentTab === 'scout') {
+            url = "http://localhost:5158/api/market/scout";
+        }
+        // 'portfolio' için API_BASE_URL (Tüm Hisseler) kalır
+
+        const response = await fetch(`${url}?${params.toString()}`);
         if (!response.ok) throw new Error("API Hatası");
 
         globalData = await response.json();
@@ -61,11 +144,14 @@ async function verileriGetir() {
         statusDiv.className = "flex items-center gap-2 text-xs font-mono text-emerald-400 bg-emerald-900/20 px-3 py-1.5 rounded-full border border-emerald-900";
         messageArea.classList.add('hidden');
 
-        let filteredData = frontendFiltrele(globalData);
+        // Eğer Portföy sekmesiysek dev tabloyu render etmeye gerek yok
+        if (currentTab !== 'portfolio') {
+            let filteredData = frontendFiltrele(globalData);
+            applySort(filteredData);
+            renderMarketTable(filteredData);
+        }
 
-        // Mevcut seçili sıralamaya göre sırala ve çiz
-        applySort(filteredData);
-        renderMarketTable(filteredData);
+        // Portföyü her zaman güncelle (çünkü arka planda fetch yaptıkça fiyatlar değişiyor)
         renderPortfolio();
 
     } catch (error) {
@@ -295,7 +381,7 @@ function renderPortfolio() {
         }
 
         const row = `
-            <tr class="hover:bg-gray-800/40 border-b border-gray-800/30 ${bgClass}">
+            <tr class="hover:bg-gray-800/40 border-b border-gray-800/30 ${bgClass} group">
                 <td class="p-4 font-bold text-white">${item.sembol}</td>
                 <td class="p-4 text-right font-mono text-gray-300">${item.adet}</td>
                 <td class="p-4 text-right font-mono text-gray-400">${item.maliyet.toFixed(2)} ₺</td>
@@ -304,6 +390,11 @@ function renderPortfolio() {
                 <td class="p-4 text-right font-mono ${pnlClass}">${pnl > 0 ? '+' : ''}${pnl.toFixed(2)} ₺</td>
                 <td class="p-4 text-right font-mono ${pnlClass} font-bold">%${pnlPercent.toFixed(2)}</td>
                 <td class="p-4 text-center">${signalBadge}</td>
+                <td class="p-4 text-center">
+                    <button onclick="removeFromPortfolio('${item.sembol}')" class="text-gray-600 hover:text-red-500 transition opacity-0 group-hover:opacity-100">
+                        <i class="fa-solid fa-trash-can"></i>
+                    </button>
+                </td>
             </tr>`;
         tbody.innerHTML += row;
     });
