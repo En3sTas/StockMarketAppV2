@@ -18,10 +18,10 @@ RESULTS_FILE = os.path.join(BASE_DIR, "data", "backtest_results_scout.csv")
 
 # --- BACKTEST CONFIG ---
 INITIAL_CAPITAL = 100000 
-HOLDING_PERIODS = [10] # 10 Days default
+HOLDING_PERIODS = [40] # 40 Days (Swing Trade)
 WARM_UP_DAYS = 250
 
-def run_simulation(data_path=DATA_FILE, holding_days=10):
+def run_simulation(data_path=DATA_FILE, holding_days=40):
     print(f"🚀 Starting Scout Strategy Backtest (Max Hold: {holding_days} days)...")
     
     # Load Data
@@ -135,7 +135,7 @@ def run_simulation(data_path=DATA_FILE, holding_days=10):
         return None
 
 if __name__ == "__main__":
-    run_simulation(holding_days=10)
+    run_simulation(holding_days=40)
     print("\n--- Portfolio Simulation Results ---")
     simulation.run_portfolio_simulation(RESULTS_FILE)
     

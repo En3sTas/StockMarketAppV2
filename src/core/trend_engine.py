@@ -241,34 +241,33 @@ def generate_signal(total_score, category_scores):
         return 'NO_TRADE'
 
 def calculate_stop_and_target(fiyat, atr, rsi, adx):
-    """
-    Final Tuning: Balanced Approach
-    Stop: 2.5 ATR (Sweet spot between 2.0 and 3.0)
-    Target: Boosted back to ~2.0x because Win Rate is high (>55%)
-    """
     if atr <= 0:
         atr = fiyat * 0.03 
         
-    # --- AYAR 1: Stop Mesafesi (2.5 ATR) ---
-    stop_distance = 2.5 * atr
+    # STOP: 3.0 ATR (Trailing Stop mantığı)
+    stop_distance = 3.0 * atr 
     stop_price = fiyat - stop_distance
     stop_price = max(0.01, stop_price)
-            
-    risk = fiyat - stop_price
     
-    # --- AYAR 2: Hedef Çarpanı (Target Multiplier) ---
-    multiplier = 2.0  # Standart Hedef (Geri yükselttik)
+    # SMART TARGET: Dynamic Risk/Reward
+    # Trend güçlüyse (ADX yüksek) hedefi yukarı çek
+    # RSI şişkinse (RSI yüksek) hedefi aşağı çek
     
-    # RSI İnce Ayarı
-    if rsi > 70:
-        if adx > 30:
-            multiplier = 2.0 # Güçlü trend, korkma, bırak koşsun.
-        else:
-            multiplier = 1.2 # Sadece şişmiş, vur-kaç yap.
-    elif rsi > 60:
-        multiplier = 1.8 # Hafif temkinli
-        
-    target_price = fiyat + (risk * multiplier)
+    base_multiplier = 4.0 # Default: Stop'un biraz üzerinde
+    
+    # ADX Boost (Trend Gücü)
+    if adx > 30: base_multiplier += 2.0
+    elif adx > 25: base_multiplier += 1.0
+    
+    # RSI Penalty (Overbought Risk)
+    if rsi > 75: base_multiplier -= 2.0
+    elif rsi > 70: base_multiplier -= 1.0
+    
+    # Minimum 2x ATR kar hedefi olsun
+    final_multiplier = max(2.0, base_multiplier)
+    
+    target_distance = final_multiplier * atr
+    target_price = fiyat + target_distance
     
     return round(stop_price, 2), round(target_price, 2)
 

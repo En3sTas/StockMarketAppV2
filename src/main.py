@@ -4,6 +4,7 @@ import time
 import random
 import schedule
 from concurrent.futures import ThreadPoolExecutor
+import threading
 
 # Determine local directory and add to path
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
@@ -19,11 +20,16 @@ from core import trend_engine
 from core import scout_engine
 
 MAX_WORKERS = 3
+data_lock = threading.Lock()
 
 def hisse_islemcisi(sembol):
     print(f"Checking: {sembol}...")
     try:
-        sonuc = analiz.veri_cek_ve_hesapla(sembol)
+        # Critical Section: TV Datafeed is likely not thread-safe or reusing buffers
+        # locking ensures only one thread accesses the specialized 'analiz' module at a time
+        # This fixes the 'duplicate data' bug.
+        with data_lock:
+            sonuc = analiz.veri_cek_ve_hesapla(sembol)
         if sonuc:
             # Unpack expanded results from analiz.py
             (fiyat, sma50, sma200, fk, pd_dd, rsi, macd_line, macd_signal, macd_hist, 

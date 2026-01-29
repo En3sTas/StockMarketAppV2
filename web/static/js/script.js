@@ -4,11 +4,8 @@ const API_BASE_URL = "http://localhost:5158/api/hisseler";
 // Portföy Verileri (Sabit)
 // Portföy Verileri (LocalStorage'dan Başlat)
 let MY_PORTFOLIO = JSON.parse(localStorage.getItem('myPortfolio')) || [
-    { sembol: "TUPRS", adet: 22, maliyet: 183.20 },
-    { sembol: "TOASO", adet: 20, maliyet: 245.90 },
-    { sembol: "YKBNK", adet: 137, maliyet: 37.12 },
-    { sembol: "ASELS", adet: 31, maliyet: 210.70 },
-    { sembol: "BRSAN", adet: 13, maliyet: 528.50 }
+    { sembol: "TUPRS", adet: 22, maliyet: 183.20, target: 220.0, stop: 170.0 },
+    { sembol: "TOASO", adet: 20, maliyet: 245.90, target: 300.0, stop: 230.0 }
 ];
 
 // LocalStorage Kaydetme Fonksiyonu
@@ -26,14 +23,34 @@ function addToPortfolio(symbol, count, cost) {
 
     // Varsa güncelle, yoksa ekle
     const existing = MY_PORTFOLIO.find(p => p.sembol === symbol);
+
+    // Auto-Calculate Targets if not provided (or overwrite for simplicity based on new cost)
+    // Find current technical data if available to calculate smart ATR-based levels
+    const liveData = globalData.find(d => d.sembol === symbol);
+
+    // Use Helper Function
+    const levels = calculateSmartLevels(cost, liveData);
+    let autoStop = levels.stop;
+    let autoTarget = levels.target;
+
     if (existing) {
         // Ağırlıklı ortalama maliyet hesabı
         const totalCost = (existing.adet * existing.maliyet) + (count * cost);
         const totalCount = existing.adet + count;
         existing.maliyet = totalCost / totalCount;
         existing.adet = totalCount;
+        // Update targets based on NEW average cost? 
+        // Or keep old? Let's update to reflect new position reality.
+        existing.stop = autoStop;
+        existing.target = autoTarget;
     } else {
-        MY_PORTFOLIO.push({ sembol: symbol, adet: count, maliyet: cost });
+        MY_PORTFOLIO.push({
+            sembol: symbol,
+            adet: count,
+            maliyet: cost,
+            stop: parseFloat(autoStop.toFixed(2)),
+            target: parseFloat(autoTarget.toFixed(2))
+        });
     }
 
     savePortfolio();
@@ -370,14 +387,35 @@ function renderPortfolio() {
             totalCost += costValue;
         }
 
+
+
+        // BACKFILL: Eksik Target/Stop varsa ve veri geldiyse hesapla ve kaydet
+        if (liveData && (!item.target || !item.stop)) {
+            const levels = calculateSmartLevels(item.maliyet, liveData);
+            item.target = levels.target;
+            item.stop = levels.stop;
+            // Değişikliği sessizce kaydet (Loop olmasın diye savePortfolio() çağırma)
+            localStorage.setItem('myPortfolio', JSON.stringify(MY_PORTFOLIO));
+        }
+
         const pnlClass = pnl >= 0 ? 'text-emerald-400' : 'text-red-400';
         const bgClass = pnl >= 0 ? 'bg-emerald-500/10' : 'bg-red-500/10';
 
         let signalBadge = '<span class="text-gray-600">-</span>';
-        if (liveData) {
-            if (liveData.rsi < 30 && liveData.adx > 20) signalBadge = '<span class="bg-emerald-500 text-black px-2 py-1 rounded text-xs font-bold animate-pulse">AL FIRSATI</span>';
-            else if (liveData.rsi > 70) signalBadge = '<span class="bg-red-500 text-white px-2 py-1 rounded text-xs font-bold">SAT (Şişti)</span>';
-            else if (liveData.hacimOrani > 2.0) signalBadge = '<span class="bg-orange-500 text-white px-2 py-1 rounded text-xs font-bold">HACİM PATLAMASI</span>';
+
+        if (liveData && item.target && item.stop) {
+            if (currentPrice >= item.target) {
+                signalBadge = '<span class="bg-red-500 text-white px-2 py-1 rounded text-xs font-bold animate-pulse">HEDEF GELDİ (SAT)</span>';
+            } else if (currentPrice <= item.stop) {
+                signalBadge = '<span class="bg-red-500 text-white px-2 py-1 rounded text-xs font-bold">STOP OLDU (SAT)</span>';
+            } else {
+                signalBadge = '<span class="text-emerald-500 text-xs font-bold">TUT</span>';
+            }
+        }
+        else if (liveData) {
+            // Fallback if no target/stop saved
+            if (liveData.rsi < 30) signalBadge = '<span class="bg-emerald-500 text-black px-2 py-1 rounded text-xs font-bold">DİP FIRSATI</span>';
+            else signalBadge = '<span class="text-gray-500 text-xs">Bekle</span>';
         }
 
         const row = `
@@ -389,6 +427,10 @@ function renderPortfolio() {
                 <td class="p-4 text-right font-mono text-white font-bold">${totalValue.toFixed(2)} ₺</td>
                 <td class="p-4 text-right font-mono ${pnlClass}">${pnl > 0 ? '+' : ''}${pnl.toFixed(2)} ₺</td>
                 <td class="p-4 text-right font-mono ${pnlClass} font-bold">%${pnlPercent.toFixed(2)}</td>
+                <td class="p-4 text-center text-xs font-mono text-gray-400">
+                    <div>T: <span class="text-emerald-300">${item.target ? item.target.toFixed(2) : '-'}</span></div>
+                    <div>S: <span class="text-red-300">${item.stop ? item.stop.toFixed(2) : '-'}</span></div>
+                </td>
                 <td class="p-4 text-center">${signalBadge}</td>
                 <td class="p-4 text-center">
                     <button onclick="removeFromPortfolio('${item.sembol}')" class="text-gray-600 hover:text-red-500 transition opacity-0 group-hover:opacity-100">
@@ -459,6 +501,45 @@ setInterval(() => {
         console.log("⏸️ Canlı veri duraklatıldı.");
     }
 }, 30000); // 30000 ms = 30 Saniye
+
+// Yardımcı Fonksiyon: Akıllı Hedef/Stop Hesapla (Trend & Scout Engines)
+function calculateSmartLevels(cost, liveData) {
+    let stop = cost * 0.95; // Default 5%
+    let target = cost * 1.15; // Default 15%
+
+    if (liveData && liveData.atr > 0) {
+        const atr = liveData.atr;
+        const strategy = (liveData.strategy || "TREND").toUpperCase();
+
+        if (strategy === "SCOUT") {
+            // --- SCOUT STRATEGY LOGIC ---
+            // Stop: 2.0 ATR (Daha dar stop, çünkü dip avlıyoruz)
+            stop = cost - (2.0 * atr);
+
+            // Target: Risk * 3.0
+            const risk = cost - stop;
+            target = cost + (risk * 3.0);
+        } else {
+            // --- TREND STRATEGY LOGIC (Default) ---
+            // Stop: 3.0 ATR
+            stop = cost - (3.0 * atr);
+
+            // Target: Dynamic Risk/Reward
+            let multiplier = 4.0;
+
+            if (liveData.adx > 30) multiplier += 2.0;
+            else if (liveData.adx > 25) multiplier += 1.0;
+
+            if (liveData.rsi > 75) multiplier -= 2.0;
+            else if (liveData.rsi > 70) multiplier -= 1.0;
+
+            if (multiplier < 2.0) multiplier = 2.0;
+
+            target = cost + (multiplier * atr);
+        }
+    }
+    return { target: parseFloat(target.toFixed(2)), stop: parseFloat(stop.toFixed(2)) };
+}
 
 // Slider Değer Göstergesi
 document.addEventListener('DOMContentLoaded', () => {

@@ -18,10 +18,10 @@ RESULTS_FILE = os.path.join(BASE_DIR, "data", "backtest_results_trend.csv")
 
 # --- BACKTEST CONFIG ---
 INITIAL_CAPITAL = 100000 
-HOLDING_PERIODS = [10] # 10 Days default
+HOLDING_PERIODS = [45] # 45 Days (Modified)
 WARM_UP_DAYS = 250
 
-def run_simulation(data_path=DATA_FILE, holding_days=10):
+def run_simulation(data_path=DATA_FILE, holding_days=45):
     print(f"🚀 Starting Trend Strategy Backtest (Max Hold: {holding_days} days)...")
     
     # Load Data
@@ -52,22 +52,33 @@ def run_simulation(data_path=DATA_FILE, holding_days=10):
                 trade = active_positions[symbol]
                 days_held = (today['Date'] - trade['entry_date']).days
                 
-                # --- OPTIMIZED TRAILING LOGIC ---
-                atr_entry = trade.get('atr_at_entry', trade['entry_price'] * 0.03)
-                breakeven_trigger = trade['entry_price'] + (1.0 * atr_entry)
+                # --- DÜZELTİLMİŞ GERÇEK TRAILING STOP (Trend Avcısı) ---
+                current_price = today['Close'] # High yerine Close daha güvenlidir
+                atr = trade.get('atr_at_entry', trade['entry_price'] * 0.03)
                 
-                if today['High'] >= breakeven_trigger:
-                    new_stop = trade['entry_price'] + (0.1 * atr_entry)
-                    if new_stop > trade['stop_price']:
-                        trade['stop_price'] = new_stop
+                # İz Süren Mesafe: 3 ATR
+                # Fiyat 100 ise ve ATR 2 ise, Stop 94'te durur.
+                # Fiyat 150 olursa, Stop 144'e gelir. (6 birim geriden takip)
+                trailing_distance = 2.0 * atr
+                
+                potential_new_stop = current_price - trailing_distance
+                
+                # Stop sadece YUKARI gidebilir. Asla aşağı inmez.
+                if potential_new_stop > trade['stop_price']:
+                    trade['stop_price'] = potential_new_stop
 
                 # --- EXIT CHECKS ---
                 exit_reason = None
                 exit_price = 0
                 
                 if tomorrow['Low'] <= trade['stop_price']:
-                    exit_reason = 'STOP_LOSS'
                     exit_price = min(trade['stop_price'], tomorrow['Open'])
+                    
+                    # Eğer Stop olduğumuz fiyat Girişin üstündeyse -> Kâr aldık demektir (Trailing Stop)
+                    if exit_price > trade['entry_price']:
+                        exit_reason = 'TRAILING_STOP'
+                    else:
+                        exit_reason = 'STOP_LOSS'
                 elif tomorrow['High'] >= trade['target_price']:
                     exit_reason = 'TAKE_PROFIT'
                     exit_price = max(trade['target_price'], tomorrow['Open'])
@@ -135,7 +146,7 @@ def run_simulation(data_path=DATA_FILE, holding_days=10):
         return None
 
 if __name__ == "__main__":
-    run_simulation(holding_days=10)
+    run_simulation(holding_days=45)
     print("\n--- Portfolio Simulation Results ---")
     simulation.run_portfolio_simulation(RESULTS_FILE)
     

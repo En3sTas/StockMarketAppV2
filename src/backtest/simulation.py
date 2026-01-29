@@ -2,9 +2,9 @@ import pandas as pd
 import numpy as np
 
 # CONFIG
-INITIAL_CAPITAL = 30000
-MAX_POSITIONS = 5  # Diversification (20% per trade)
-COMMISSION = 0.002 # 0.2% per trade (Entry + Exit)
+INITIAL_CAPITAL = 30000       # Senin gerçek bütçen
+MAX_POSITIONS = 5             # 5 Hisse (Hisse başı 6.000 TL)
+COMMISSION = 0.001            # Binde 1 (Midas + Slippage Payı)
 
 def run_portfolio_simulation():
     print(f"💰 Starting Portfolio Simulation (2007-2026)")
