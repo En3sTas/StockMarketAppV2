@@ -7,6 +7,7 @@
     <title>BorsaBot v1.5 - Technical Dashboard</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/microsoft-signalr/6.0.1/signalr.js"></script>
 
     <link rel="stylesheet" href="static/css/style.css">
 </head>
@@ -36,6 +37,10 @@
                     <button onclick="switchTab('scout')" id="tab-scout"
                         class="tab-passive px-6 py-2 rounded-md text-sm font-bold transition flex items-center gap-2 hover:text-orange-400">
                         <i class="fa-brands fa-searchengin"></i> Scout Radar
+                    </button>
+                    <button onclick="switchTab('all')" id="tab-all"
+                        class="tab-passive px-6 py-2 rounded-md text-sm font-bold transition flex items-center gap-2 hover:text-gray-400">
+                        <i class="fa-solid fa-list"></i> Tüm Hisseler
                     </button>
                     <button onclick="switchTab('portfolio')" id="tab-portfolio"
                         class="tab-passive px-6 py-2 rounded-md text-sm font-bold transition flex items-center gap-2">

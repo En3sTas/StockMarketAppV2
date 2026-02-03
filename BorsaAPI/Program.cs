@@ -1,16 +1,21 @@
 using BorsaAPI.Models;
 using BorsaAPI.Services;
+using BorsaAPI.Hubs; // Import Namespace
 using Microsoft.OpenApi.Models;
 
 var builder = WebApplication.CreateBuilder(args);
+
+// --- SIGNALR SERVICE ---
+builder.Services.AddSignalR();
 
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("HerkesGelsinPolitikasi", policy =>
     {
-        policy.AllowAnyOrigin()
+        policy.SetIsOriginAllowed(origin => true) // Allow any origin
               .AllowAnyMethod()
-              .AllowAnyHeader();
+              .AllowAnyHeader()
+              .AllowCredentials(); // SignalR needs this for connection stability
     });
 });
 builder.Services.AddControllers();
@@ -40,6 +45,14 @@ if (app.Environment.IsDevelopment())
 app.UseHttpsRedirection();
 app.UseAuthorization();
 app.UseCors("HerkesGelsinPolitikasi");
+
+// --- STATIC FILES (Frontend Hosting) ---
+app.UseDefaultFiles(); // index.html automatic lookup
+app.UseStaticFiles();  // wwwroot access
+
 app.MapControllers();
+
+// --- SIGNALR ENDPOINT ---
+app.MapHub<BorsaHub>("/hubs/borsa");
 
 app.Run();

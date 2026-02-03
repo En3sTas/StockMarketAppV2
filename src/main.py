@@ -3,6 +3,8 @@ import os
 import time
 import random
 import schedule
+import requests
+import json
 from concurrent.futures import ThreadPoolExecutor
 import threading
 
@@ -71,6 +73,50 @@ def hisse_islemcisi(sembol):
                 fiyat_onceki, rsi_onceki, adx_onceki, atr,
                 strategy=strategy
             )
+            
+            # --- NOTIFY API WITH FULL PAYLOAD (OPTIMIZATION) ---
+            try:
+                # Prepare payload exactly as the C# API expects (Hisse model)
+                payload = {
+                    "Sembol": sembol,
+                    "Fiyat": fiyat,
+                    "Sma50": sma50,
+                    "Sma200": sma200,
+                    "Fk": fk,
+                    "PdDd": pd_dd,
+                    "Rsi": rsi,
+                    "MacdLine": macd_line,
+                    "MacdSignal": macd_signal,
+                    "MacdHist": macd_hist,
+                    "Adx": adx,
+                    "Dmp": dmp,
+                    "Dmn": dmn,
+                    "HacimOrani": hacim_orani,
+                    "Signal": signal,
+                    "Score": score,
+                    "StopPrice": stop_price,
+                    "TargetPrice": target_price,
+                    "MacdHistOnceki": macd_hist_onceki,
+                    "HacimOnceki": hacim_onceki,
+                    "FiyatOnceki": fiyat_onceki,
+                    "RsiOnceki": rsi_onceki,
+                    "AdxOnceki": adx_onceki,
+                    "Atr": atr,
+                    "Strategy": strategy,
+                    "SonGuncelleme": time.strftime('%Y-%m-%dT%H:%M:%S') 
+                    # Note: API might overwrite timestamp, but sending it is safe
+                }
+                
+                # Send to .NET API (Assuming it runs on localhost:5158)
+                # Adjust port if necessary based on config
+                api_url = "http://localhost:5158/api/market/notify"
+                requests.post(api_url, json=payload, timeout=2)
+                # print(f"📡 API Notified: {sembol}")
+                
+            except Exception as notify_err:
+                 print(f"⚠️ API Notification Failed ({sembol}): {notify_err}")
+
+
             
             print(f"✅ {sembol} [{strategy}] -> Signal: {signal} | Score: {score}")
             time.sleep(random.uniform(0.5, 1.5))

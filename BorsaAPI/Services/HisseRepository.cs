@@ -23,7 +23,7 @@ namespace BorsaAPI.Services
                                              decimal? maxAdx, decimal? minAdx,
                                              decimal? maxDmp, decimal? minDmp,
                                              decimal? maxDmn, decimal? minDmn,
-                                             decimal? maxHacimOrani, decimal? minHacimOrani, string? signal, string? strategy)
+                                             decimal? maxHacimOrani, decimal? minHacimOrani, string? signal, string? strategy, int? minScore)
         {
             List<Hisse> hisseListesi = new List<Hisse>();
 
@@ -33,6 +33,12 @@ namespace BorsaAPI.Services
                 StringBuilder sqlBuilder = new StringBuilder("SELECT * FROM Hisseler WHERE 1=1");
                 NpgsqlCommand cmd = new NpgsqlCommand();
                 cmd.Connection = conn;
+
+                if (minScore.HasValue)
+                {
+                    sqlBuilder.Append(" AND score >= @minScore");
+                    cmd.Parameters.AddWithValue("@minScore", minScore.Value);
+                }
 
                 if (!string.IsNullOrEmpty(signal) && signal != "All")
                 {

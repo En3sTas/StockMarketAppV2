@@ -1,6 +1,9 @@
 using Microsoft.AspNetCore.Mvc;
 using BorsaAPI.Models;
 using BorsaAPI.Services;
+using Microsoft.AspNetCore.SignalR;
+using BorsaAPI.Hubs;
+using System.Threading.Tasks;
 
 namespace BorsaAPI.Controllers
 {
@@ -9,10 +12,12 @@ namespace BorsaAPI.Controllers
     public class HisselerController : ControllerBase
     {
         private readonly IHisseRepository _hisseRepository;
+        private readonly IHubContext<BorsaHub> _hubContext;
 
-        public HisselerController(IHisseRepository hisseRepository)
+        public HisselerController(IHisseRepository hisseRepository, IHubContext<BorsaHub> hubContext)
         {
             _hisseRepository = hisseRepository;
+            _hubContext = hubContext;
         }
 
         [HttpGet]
@@ -38,7 +43,8 @@ namespace BorsaAPI.Controllers
             [FromQuery] decimal? maxHacimOrani,
             [FromQuery] decimal? minHacimOrani,
             [FromQuery] string? signal,
-            [FromQuery] string? strategy)
+            [FromQuery] string? strategy,
+            [FromQuery] int? minScore)
         {
             try
             {
@@ -52,7 +58,7 @@ namespace BorsaAPI.Controllers
                                                                  maxAdx, minAdx,
                                                                  maxDmp, minDmp,
                                                                  maxDmn, minDmn,
-                                                                 maxHacimOrani, minHacimOrani, signal, strategy);
+                                                                 maxHacimOrani, minHacimOrani, signal, strategy, minScore);
                 return Ok(veriler);
             }
             catch (Exception ex)
@@ -64,13 +70,33 @@ namespace BorsaAPI.Controllers
         [HttpGet("/api/market/trend")]
         public IActionResult GetTrend()
         {
-            return GetHisseler(null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null, "TREND");
+            // TREND + SCORE > 65
+            return GetHisseler(null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null, "TREND", 65);
         }
 
         [HttpGet("/api/market/scout")]
         public IActionResult GetScout()
         {
-            return GetHisseler(null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null, "SCOUT");
+             // SCOUT + SCORE > 65
+            return GetHisseler(null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null, "SCOUT", 65);
+        }
+
+        [HttpGet("/api/market/all")]
+        public IActionResult GetAllStocks()
+        {
+             // ALL STOCKS (No Strategy Filter, No Score Filter)
+            return GetHisseler(null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null, null, null);
+        }
+
+        [HttpPost("/api/market/notify")]
+        public async Task<IActionResult> NotifyUpdate([FromBody] Hisse hisse)
+        {
+            if (hisse == null) return BadRequest("Invalid Data");
+
+            // Broadcast to all connected clients
+            await _hubContext.Clients.All.SendAsync("ReceiveStockUpdate", hisse);
+
+            return Ok(new { status = "Broadcasted", symbol = hisse.Sembol });
         }
     }
 }

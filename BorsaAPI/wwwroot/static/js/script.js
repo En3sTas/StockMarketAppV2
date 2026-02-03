@@ -1,5 +1,5 @@
 // Global Değişkenler
-const API_BASE_URL = "http://localhost:5158/api/hisseler";
+const API_BASE_URL = "/api/hisseler";
 
 // Portföy Verileri (Sabit)
 // Portföy Verileri (LocalStorage'dan Başlat)
@@ -93,6 +93,7 @@ function switchTab(tabName) {
     // Tab Buttons
     const tabTrend = document.getElementById('tab-trend');
     const tabScout = document.getElementById('tab-scout');
+    const tabAll = document.getElementById('tab-all');
     const tabPortfolio = document.getElementById('tab-portfolio');
 
     // Reset Classes
@@ -101,6 +102,7 @@ function switchTab(tabName) {
 
     tabTrend.className = passiveClass + " hover:text-emerald-400";
     tabScout.className = passiveClass + " hover:text-orange-400";
+    tabAll.className = passiveClass + " hover:text-gray-400";
     tabPortfolio.className = passiveClass;
 
     if (tabName === 'portfolio') {
@@ -117,6 +119,8 @@ function switchTab(tabName) {
             tabTrend.className = activeClass + " text-emerald-400";
         } else if (tabName === 'scout') {
             tabScout.className = activeClass + " text-orange-400";
+        } else if (tabName === 'all') {
+            tabAll.className = activeClass + " text-gray-200";
         }
         verileriGetir(); // Reload data for the active tab
     }
@@ -149,6 +153,8 @@ async function verileriGetir() {
             url = "http://localhost:5158/api/market/trend";
         } else if (currentTab === 'scout') {
             url = "http://localhost:5158/api/market/scout";
+        } else if (currentTab === 'all') {
+            url = "http://localhost:5158/api/market/all";
         }
         // 'portfolio' için API_BASE_URL (Tüm Hisseler) kalır
 
@@ -297,11 +303,12 @@ function renderMarketTable(data) {
 
             const tarih = new Date(h.sonGuncelleme).toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' });
 
+
             const row = `
-            <tr class="hover:bg-gray-800/40 transition border-b border-gray-800/30 group">
+            <tr id="row-${h.sembol}" class="hover:bg-gray-800/40 transition border-b border-gray-800/30 group">
                 <td class="p-4 font-bold text-white sticky left-0 bg-[#0b0f19] group-hover:bg-gray-800/40 z-10 border-r border-gray-800/50">${h.sembol}</td>
                 
-                <td class="p-4 text-blue-300 font-mono text-base tracking-tight">
+                <td class="p-4 text-blue-300 font-mono text-base tracking-tight cell-fiyat">
                     ${h.fiyat.toFixed(2)} ₺
                     ${getDiffBadge(h.fiyat, h.fiyatOnceki)}
                 </td>
@@ -309,7 +316,7 @@ function renderMarketTable(data) {
                 <td class="p-4 font-mono ${h.fiyat > h.sma50 ? 'text-emerald-300/90' : 'text-gray-600'}">${h.sma50.toFixed(2)}</td>
                 <td class="p-4 font-mono ${h.fiyat > h.sma200 ? 'text-yellow-300/90' : 'text-gray-600'}">${h.sma200.toFixed(2)}</td>
                 
-                <td class="p-4 font-mono ${rsiClass}">
+                <td class="p-4 font-mono ${rsiClass} cell-rsi">
                     ${h.rsi.toFixed(2)}
                     ${getDiffBadge(h.rsi, h.rsiOnceki)}
                 </td>
@@ -347,12 +354,12 @@ function renderMarketTable(data) {
                 <td class="p-4 text-gray-400 font-mono">${h.pdDd.toFixed(2)}</td>
 
                 <!-- NEW: Trading Signal Cells -->
-                <td class="p-4 text-center">${signalBadge}</td>
+                <td class="p-4 text-center cell-signal">${signalBadge}</td>
                 <td class="p-4 text-center">
                     <div class="flex flex-col items-center">
-                        <span class="${scoreColor} text-lg font-mono">${h.score || 0}</span>
+                        <span class="${scoreColor} text-lg font-mono cell-score">${h.score || 0}</span>
                         <div class="w-16 h-1 bg-gray-700 rounded-full mt-1 overflow-hidden">
-                            <div class="h-full ${h.score >= 75 ? 'bg-emerald-500' : (h.score >= 50 ? 'bg-yellow-500' : 'bg-red-500')}" style="width: ${h.score || 0}%"></div>
+                            <div class="cell-score-bar h-full ${h.score >= 75 ? 'bg-emerald-500' : (h.score >= 50 ? 'bg-yellow-500' : 'bg-red-500')}" style="width: ${h.score || 0}%"></div>
                         </div>
                     </div>
                 </td>
@@ -523,6 +530,90 @@ function calculateSmartLevels(cost, liveData) {
     }
     return { target: parseFloat(target.toFixed(2)), stop: parseFloat(stop.toFixed(2)) };
 }
+
+// --- SIGNALR (REAL-TIME UPDATES) ---
+const connection = new signalR.HubConnectionBuilder()
+    .withUrl("/hubs/borsa")
+    .withAutomaticReconnect()
+    .build();
+
+connection.start()
+    .then(() => {
+        console.log("🟢 SignalR Connected!");
+        document.getElementById('connectionStatus').innerHTML = '<span class="w-2 h-2 rounded-full bg-emerald-500"></span> Canlı (WebSocket)';
+        document.getElementById('connectionStatus').className = "flex items-center gap-2 text-xs font-mono text-emerald-400 bg-emerald-900/20 px-3 py-1.5 rounded-full border border-emerald-900";
+    })
+    .catch(err => console.error("SignalR Connection Error: ", err));
+
+connection.on("ReceiveStockUpdate", (updatedStock) => {
+    // 1. Update Global Data
+    const index = globalData.findIndex(s => s.sembol === updatedStock.sembol);
+    if (index !== -1) {
+        globalData[index] = updatedStock;
+    } else {
+        // If not in list, check if it belongs (e.g. in 'All' tab or meets score criteria)
+        // For simplicity, if we are in 'All' tab, push it.
+        // If in 'Trend/Scout', only push if score > 65.
+        // Simplified: Just ignore if not in list to avoid list jumping behavior
+    }
+
+    // 2. Update Portfolio if exists
+    const portfolioItem = MY_PORTFOLIO.find(p => p.sembol === updatedStock.sembol);
+    if (portfolioItem) {
+        // Only re-render portfolio if we are ON the portfolio tab to save resources
+        if (currentTab === 'portfolio') {
+            renderPortfolio();
+        } else {
+            // If not on portfolio tab, we still need to update calculations for next time
+            // (Already handled by updating specific item properties? No, renderPortfolio calculates from globalData mostly)
+        }
+    }
+
+    // 3. Update Market Table Row (Smart Patching)
+    if (currentTab !== 'portfolio') {
+        const row = document.getElementById(`row-${updatedStock.sembol}`);
+        if (row) {
+            // Flash Effect
+            const isPositive = updatedStock.fiyat > updatedStock.fiyatOnceki;
+            const flashClass = isPositive ? 'bg-emerald-900/40' : 'bg-red-900/40';
+
+            row.classList.add(flashClass);
+            setTimeout(() => row.classList.remove(flashClass), 500);
+
+            // Update Cells directly (Performance)
+            updateCell(row, '.cell-fiyat', `${updatedStock.fiyat.toFixed(2)} ₺ ${getDiffBadge(updatedStock.fiyat, updatedStock.fiyatOnceki)}`);
+            updateCell(row, '.cell-rsi', `${updatedStock.rsi.toFixed(2)} ${getDiffBadge(updatedStock.rsi, updatedStock.rsiOnceki)}`);
+            updateCell(row, '.cell-score', updatedStock.score);
+
+            // Re-render score bar
+            const scoreBar = row.querySelector('.cell-score-bar');
+            if (scoreBar) {
+                scoreBar.style.width = `${updatedStock.score}%`;
+                scoreBar.className = `h-full ${updatedStock.score >= 75 ? 'bg-emerald-500' : (updatedStock.score >= 50 ? 'bg-yellow-500' : 'bg-red-500')}`;
+            }
+
+            // Update Signal Badge
+            const signalCell = row.querySelector('.cell-signal');
+            if (signalCell) signalCell.innerHTML = getSignalBadge(updatedStock.signal);
+
+        }
+    }
+});
+
+function updateCell(row, selector, content) {
+    const cell = row.querySelector(selector);
+    if (cell) cell.innerHTML = content;
+}
+
+function getSignalBadge(signal) {
+    switch (signal) {
+        case 'STRONG_BUY': return '<span class="bg-gradient-to-r from-emerald-600 to-green-500 text-white px-3 py-1 rounded-full text-[10px] font-bold shadow-lg shadow-emerald-900/40 animate-pulse"><i class="fa-solid fa-rocket mr-1"></i> GÜÇLÜ AL</span>';
+        case 'BUY': return '<span class="bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 px-2 py-1 rounded text-[10px] font-bold">✅ AL</span>';
+        case 'WATCH': return '<span class="bg-yellow-500/10 text-yellow-400 border border-yellow-500/30 px-2 py-1 rounded text-[10px] font-bold">👀 İZLE</span>';
+        default: return '<span class="text-gray-600 text-[10px]">NO TRADE</span>';
+    }
+}
+
 
 // Slider Değer Göstergesi
 document.addEventListener('DOMContentLoaded', () => {
