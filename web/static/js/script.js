@@ -483,24 +483,7 @@ function temizle() { document.querySelectorAll('input').forEach(i => i.value = '
 window.onload = verileriGetir;
 
 // 2. Her 30 saniyede bir kontrol et ve güncelle
-setInterval(() => {
-    const toggle = document.getElementById('autoRefreshToggle');
 
-    // DİKKAT: Sadece toggle elementi varsa ve CHECKED (seçili) ise çalışır.
-    if (toggle && toggle.checked) {
-        console.log("🔄 Canlı veri güncelleniyor...");
-        verileriGetir();
-
-        // Yenileme butonunu döndür (Görsel efekt)
-        const refreshBtn = document.querySelector('.fa-rotate');
-        if (refreshBtn) {
-            refreshBtn.classList.add('fa-spin');
-            setTimeout(() => refreshBtn.classList.remove('fa-spin'), 1000);
-        }
-    } else {
-        console.log("⏸️ Canlı veri duraklatıldı.");
-    }
-}, 30000); // 30000 ms = 30 Saniye
 
 // Yardımcı Fonksiyon: Akıllı Hedef/Stop Hesapla (Trend & Scout Engines)
 function calculateSmartLevels(cost, liveData) {

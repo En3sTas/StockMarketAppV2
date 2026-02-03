@@ -168,9 +168,7 @@ def evaluate_stock(data):
         data.get('atr', 0)
     )
     
-    # If signal is NO_TRADE, reset
-    if signal == 'NO_TRADE':
-        stop_price = 0
-        target_price = 0
+    # DO NOT RESET TARGETS on NO_TRADE
+    pass
         
     return signal, total_score, stop_price, target_price

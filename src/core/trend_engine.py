@@ -294,9 +294,9 @@ def evaluate_stock(data):
         data['adx']
     )
     
-    # If signal is NO_TRADE by score, reset targets
-    if signal == 'NO_TRADE':
-        stop_price = 0
-        target_price = 0
+    # DO NOT RESET TARGETS on NO_TRADE
+    # We want to see Stop/Target levels even if we are not buying right now.
+    # This allows the Portfolio to manage exits (Trailing Stop) dynamically.
+    pass
         
     return signal, total_score, stop_price, target_price
