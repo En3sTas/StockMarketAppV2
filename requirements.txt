@@ -6,3 +6,5 @@ pandas
 pandas-ta
 numpy
 requests
+pika
+tqdm

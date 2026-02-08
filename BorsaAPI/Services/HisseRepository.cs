@@ -13,17 +13,7 @@ namespace BorsaAPI.Services
             _connectionString = configuration.GetConnectionString("BorsaDb") ?? string.Empty;
         }
 
-        public List<Hisse> TumHisseleriGetir(decimal? maxFk, decimal? minFk,
-                                             decimal? maxPdDd, decimal? minPdDd,
-                                             decimal? maxRsi, decimal? minRsi,
-                                             decimal? maxMacdLine, decimal? minMacdLine,
-                                             decimal? maxMacdSignal, decimal? minMacdSignal,
-                                             decimal? maxMacdHist, decimal? minMacdHist,
-                                             
-                                             decimal? maxAdx, decimal? minAdx,
-                                             decimal? maxDmp, decimal? minDmp,
-                                             decimal? maxDmn, decimal? minDmn,
-                                             decimal? maxHacimOrani, decimal? minHacimOrani, string? signal, string? strategy, int? minScore)
+        public List<Hisse> TumHisseleriGetir(HisselerFilterDto filter)
         {
             List<Hisse> hisseListesi = new List<Hisse>();
 
@@ -34,123 +24,123 @@ namespace BorsaAPI.Services
                 NpgsqlCommand cmd = new NpgsqlCommand();
                 cmd.Connection = conn;
 
-                if (minScore.HasValue)
+                if (filter.MinScore.HasValue)
                 {
                     sqlBuilder.Append(" AND score >= @minScore");
-                    cmd.Parameters.AddWithValue("@minScore", minScore.Value);
+                    cmd.Parameters.AddWithValue("@minScore", filter.MinScore.Value);
                 }
 
-                if (!string.IsNullOrEmpty(signal) && signal != "All")
+                if (!string.IsNullOrEmpty(filter.Signal) && filter.Signal != "All")
                 {
                     sqlBuilder.Append(" AND signal = @signal");
-                    cmd.Parameters.AddWithValue("@signal", signal);
+                    cmd.Parameters.AddWithValue("@signal", filter.Signal);
                 }
 
-                if (!string.IsNullOrEmpty(strategy) && strategy != "All")
+                if (!string.IsNullOrEmpty(filter.Strategy) && filter.Strategy != "All")
                 {
                     sqlBuilder.Append(" AND strategy = @strategy");
-                    cmd.Parameters.AddWithValue("@strategy", strategy);
+                    cmd.Parameters.AddWithValue("@strategy", filter.Strategy);
                 }
                 
-                if (minFk.HasValue)
+                if (filter.MinFk.HasValue)
                 {
                     sqlBuilder.Append(" AND fk >= @minFk");
-                    cmd.Parameters.AddWithValue("@minFk", minFk.Value);
+                    cmd.Parameters.AddWithValue("@minFk", filter.MinFk.Value);
                 }
-                if (maxFk.HasValue)
+                if (filter.MaxFk.HasValue)
                 {
                     sqlBuilder.Append(" AND fk <= @maxFk");
-                    cmd.Parameters.AddWithValue("@maxFk", maxFk.Value);
+                    cmd.Parameters.AddWithValue("@maxFk", filter.MaxFk.Value);
                 }
-                if (minPdDd.HasValue)
+                if (filter.MinPdDd.HasValue)
                 {
                     sqlBuilder.Append(" AND pd_dd >= @minPdDd");
-                    cmd.Parameters.AddWithValue("@minPdDd", minPdDd.Value);
+                    cmd.Parameters.AddWithValue("@minPdDd", filter.MinPdDd.Value);
                 }
-                if (maxPdDd.HasValue)
+                if (filter.MaxPdDd.HasValue)
                 {
                     sqlBuilder.Append(" AND pd_dd <= @maxPdDd");
-                    cmd.Parameters.AddWithValue("@maxPdDd", maxPdDd.Value);
+                    cmd.Parameters.AddWithValue("@maxPdDd", filter.MaxPdDd.Value);
                 }
-                if (minRsi.HasValue)
+                if (filter.MinRsi.HasValue)
                 {
                     sqlBuilder.Append(" AND rsi >= @minRsi");
-                    cmd.Parameters.AddWithValue("@minRsi", minRsi.Value);
+                    cmd.Parameters.AddWithValue("@minRsi", filter.MinRsi.Value);
                 }
-                if (maxRsi.HasValue)
+                if (filter.MaxRsi.HasValue)
                 {
                     sqlBuilder.Append(" AND rsi <= @maxRsi");
-                    cmd.Parameters.AddWithValue("@maxRsi", maxRsi.Value);
+                    cmd.Parameters.AddWithValue("@maxRsi", filter.MaxRsi.Value);
                 }
-                if (minMacdHist.HasValue)
+                if (filter.MinMacdHist.HasValue)
                 {
                     sqlBuilder.Append(" AND macd_hist >= @minMacdHist");
-                    cmd.Parameters.AddWithValue("@minMacdHist", minMacdHist.Value);
+                    cmd.Parameters.AddWithValue("@minMacdHist", filter.MinMacdHist.Value);
                 }
-                if (maxMacdHist.HasValue)
+                if (filter.MaxMacdHist.HasValue)
                 {
                     sqlBuilder.Append(" AND macd_hist <= @maxMacdHist");
-                    cmd.Parameters.AddWithValue("@maxMacdHist", maxMacdHist.Value);
+                    cmd.Parameters.AddWithValue("@maxMacdHist", filter.MaxMacdHist.Value);
                 }
-                if (minMacdLine.HasValue)
+                if (filter.MinMacdLine.HasValue)
                 {
                     sqlBuilder.Append(" AND macd_line >= @minMacdLine");
-                    cmd.Parameters.AddWithValue("@minMacdLine", minMacdLine.Value);
+                    cmd.Parameters.AddWithValue("@minMacdLine", filter.MinMacdLine.Value);
                 }
-                if (maxMacdLine.HasValue)
+                if (filter.MaxMacdLine.HasValue)
                 {
                     sqlBuilder.Append(" AND macd_line <= @maxMacdLine");
-                    cmd.Parameters.AddWithValue("@maxMacdLine", maxMacdLine.Value);
+                    cmd.Parameters.AddWithValue("@maxMacdLine", filter.MaxMacdLine.Value);
                 }
-                if (minMacdSignal.HasValue)
+                if (filter.MinMacdSignal.HasValue)
                 {
                     sqlBuilder.Append(" AND macd_signal >= @minMacdSignal");
-                    cmd.Parameters.AddWithValue("@minMacdSignal", minMacdSignal.Value);
+                    cmd.Parameters.AddWithValue("@minMacdSignal", filter.MinMacdSignal.Value);
                 }
-                if (maxMacdSignal.HasValue)
+                if (filter.MaxMacdSignal.HasValue)
                 {
                     sqlBuilder.Append(" AND macd_signal <= @maxMacdSignal");
-                    cmd.Parameters.AddWithValue("@maxMacdSignal", maxMacdSignal.Value);
+                    cmd.Parameters.AddWithValue("@maxMacdSignal", filter.MaxMacdSignal.Value);
                 }
-                if (minAdx.HasValue)
+                if (filter.MinAdx.HasValue)
                 {
                     sqlBuilder.Append(" AND adx >= @minAdx");
-                    cmd.Parameters.AddWithValue("@minAdx", minAdx.Value);
+                    cmd.Parameters.AddWithValue("@minAdx", filter.MinAdx.Value);
                 }   
-                if (maxAdx.HasValue)
+                if (filter.MaxAdx.HasValue)
                 {
                     sqlBuilder.Append(" AND adx <= @maxAdx");
-                    cmd.Parameters.AddWithValue("@maxAdx", maxAdx.Value);
+                    cmd.Parameters.AddWithValue("@maxAdx", filter.MaxAdx.Value);
                 }
-                if (minDmp.HasValue)
+                if (filter.MinDmp.HasValue)
                 {
                     sqlBuilder.Append(" AND dmp >= @minDmp");
-                    cmd.Parameters.AddWithValue("@minDmp", minDmp.Value);
+                    cmd.Parameters.AddWithValue("@minDmp", filter.MinDmp.Value);
                 }
-                if (maxDmp.HasValue)
+                if (filter.MaxDmp.HasValue)
                 {
                     sqlBuilder.Append(" AND dmp <= @maxDmp");
-                    cmd.Parameters.AddWithValue("@maxDmp", maxDmp.Value);
+                    cmd.Parameters.AddWithValue("@maxDmp", filter.MaxDmp.Value);
                 }
-                if (minDmn.HasValue)
+                if (filter.MinDmn.HasValue)
                 {
                     sqlBuilder.Append(" AND dmn >= @minDmn");
-                    cmd.Parameters.AddWithValue("@minDmn", minDmn.Value);
+                    cmd.Parameters.AddWithValue("@minDmn", filter.MinDmn.Value);
                 }
-                if (maxDmn.HasValue)
+                if (filter.MaxDmn.HasValue)
                 {
                     sqlBuilder.Append(" AND dmn <= @maxDmn");
-                    cmd.Parameters.AddWithValue("@maxDmn", maxDmn.Value);
+                    cmd.Parameters.AddWithValue("@maxDmn", filter.MaxDmn.Value);
                 }
-                if (minHacimOrani.HasValue)
+                if (filter.MinHacimOrani.HasValue)
                 {
                     sqlBuilder.Append(" AND hacim_orani >= @minHacimOrani");
-                    cmd.Parameters.AddWithValue("@minHacimOrani", minHacimOrani.Value);
+                    cmd.Parameters.AddWithValue("@minHacimOrani", filter.MinHacimOrani.Value);
                 }
-                if (maxHacimOrani.HasValue)
+                if (filter.MaxHacimOrani.HasValue)
                 {
                     sqlBuilder.Append(" AND hacim_orani <= @maxHacimOrani");
-                    cmd.Parameters.AddWithValue("@maxHacimOrani", maxHacimOrani.Value);
+                    cmd.Parameters.AddWithValue("@maxHacimOrani", filter.MaxHacimOrani.Value);
                 }
                 sqlBuilder.Append(" ORDER BY sembol ASC");
                 cmd.CommandText = sqlBuilder.ToString();
@@ -198,7 +188,89 @@ namespace BorsaAPI.Services
                     }
                 }
             }
+
             return hisseListesi;
+        }
+
+        public void Kaydet(Hisse hisse)
+        {
+            using (NpgsqlConnection conn = new NpgsqlConnection(_connectionString))
+            {
+                conn.Open();
+                string sql = @"
+                    INSERT INTO Hisseler (
+                        sembol, fiyat, sma_50, sma_200, fk, pd_dd, rsi, macd_line, macd_signal, macd_hist, adx, dmp, dmn, hacim_orani, 
+                        signal, score, stop_price, target_price, macd_hist_onceki, hacim_onceki,
+                        fiyat_onceki, rsi_onceki, adx_onceki, atr,
+                        son_guncelleme, strategy
+                    )
+                    VALUES (@sembol, @fiyat, @sma50, @sma200, @fk, @pd_dd, @rsi, @macd_line, @macd_signal, @macd_hist, @adx, @dmp, @dmn, @hacim_orani, 
+                        @signal, @score, @stop_price, @target_price, @macd_hist_onceki, @hacim_onceki,
+                        @fiyat_onceki, @rsi_onceki, @adx_onceki, @atr, NOW(), @strategy)
+                    ON CONFLICT (sembol) 
+                    DO UPDATE SET 
+                        fiyat = EXCLUDED.fiyat,
+                        sma_50 = EXCLUDED.sma_50,
+                        sma_200 = EXCLUDED.sma_200,
+                        fk = EXCLUDED.fk,
+                        pd_dd = EXCLUDED.pd_dd,
+                        rsi = EXCLUDED.rsi,
+                        macd_line = EXCLUDED.macd_line,
+                        macd_signal = EXCLUDED.macd_signal,
+                        macd_hist= EXCLUDED.macd_hist,
+                        adx = EXCLUDED.adx,
+                        dmp = EXCLUDED.dmp,
+                        dmn = EXCLUDED.dmn,
+                        hacim_orani = EXCLUDED.hacim_orani,
+                        
+                        signal = EXCLUDED.signal,
+                        score = EXCLUDED.score,
+                        stop_price = EXCLUDED.stop_price,
+                        target_price = EXCLUDED.target_price,
+                        macd_hist_onceki = EXCLUDED.macd_hist_onceki,
+                        hacim_onceki = EXCLUDED.hacim_onceki,
+
+                        fiyat_onceki = EXCLUDED.fiyat_onceki,
+                        rsi_onceki = EXCLUDED.rsi_onceki,
+                        adx_onceki = EXCLUDED.adx_onceki,
+                        atr = EXCLUDED.atr,
+                        
+                        son_guncelleme = EXCLUDED.son_guncelleme,
+                        strategy = EXCLUDED.strategy;";
+
+                using (NpgsqlCommand cmd = new NpgsqlCommand(sql, conn))
+                {
+                    cmd.Parameters.AddWithValue("@sembol", hisse.Sembol);
+                    cmd.Parameters.AddWithValue("@fiyat", hisse.Fiyat);
+                    cmd.Parameters.AddWithValue("@sma50", hisse.Sma50);
+                    cmd.Parameters.AddWithValue("@sma200", hisse.Sma200);
+                    cmd.Parameters.AddWithValue("@fk", hisse.Fk);
+                    cmd.Parameters.AddWithValue("@pd_dd", hisse.PdDd);
+                    cmd.Parameters.AddWithValue("@rsi", hisse.Rsi);
+                    cmd.Parameters.AddWithValue("@macd_line", hisse.MacdLine);
+                    cmd.Parameters.AddWithValue("@macd_signal", hisse.MacdSignal);
+                    cmd.Parameters.AddWithValue("@macd_hist", hisse.MacdHist);
+                    cmd.Parameters.AddWithValue("@adx", hisse.Adx);
+                    cmd.Parameters.AddWithValue("@dmp", hisse.Dmp);
+                    cmd.Parameters.AddWithValue("@dmn", hisse.Dmn);
+                    cmd.Parameters.AddWithValue("@hacim_orani", hisse.HacimOrani);
+                    
+                    cmd.Parameters.AddWithValue("@signal", hisse.Signal);
+                    cmd.Parameters.AddWithValue("@score", hisse.Score);
+                    cmd.Parameters.AddWithValue("@stop_price", hisse.StopPrice);
+                    cmd.Parameters.AddWithValue("@target_price", hisse.TargetPrice);
+                    cmd.Parameters.AddWithValue("@macd_hist_onceki", hisse.MacdHistOnceki);
+                    cmd.Parameters.AddWithValue("@hacim_onceki", hisse.HacimOnceki);
+                    
+                    cmd.Parameters.AddWithValue("@fiyat_onceki", hisse.FiyatOnceki);
+                    cmd.Parameters.AddWithValue("@rsi_onceki", hisse.RsiOnceki);
+                    cmd.Parameters.AddWithValue("@adx_onceki", hisse.AdxOnceki);
+                    cmd.Parameters.AddWithValue("@atr", hisse.Atr);
+                    cmd.Parameters.AddWithValue("@strategy", hisse.Strategy);
+
+                    cmd.ExecuteNonQuery();
+                }
+            }
         }
     }
 }

@@ -3,7 +3,6 @@ import os
 import time
 import random
 import schedule
-import requests
 import json
 from concurrent.futures import ThreadPoolExecutor
 import threading
@@ -12,9 +11,9 @@ import threading
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
 import config 
-from core import database
+# from core import database # REMOVED: Direct DB access
 from core import analiz
-# from core import trading_engine # Deprecated
+from core.rabbitmq_manager import RabbitMQManager # ADDED: RabbitMQ
 from config import HISSELER
 
 # Import New Engines
@@ -23,15 +22,26 @@ from core import scout_engine
 
 MAX_WORKERS = 3
 data_lock = threading.Lock()
+# Thread-local storage for RabbitMQ connections
+thread_local = threading.local()
+
+def get_rabbitmq_connection():
+    """Get or create a thread-local RabbitMQ connection."""
+    if not hasattr(thread_local, "mq"):
+        try:
+            thread_local.mq = RabbitMQManager()
+        except Exception as e:
+            print(f"❌ Failed to initialize RabbitMQ for thread: {e}")
+            thread_local.mq = None
+    return thread_local.mq
 
 def hisse_islemcisi(sembol):
     print(f"Checking: {sembol}...")
     try:
         # Critical Section: TV Datafeed is likely not thread-safe or reusing buffers
-        # locking ensures only one thread accesses the specialized 'analiz' module at a time
-        # This fixes the 'duplicate data' bug.
         with data_lock:
             sonuc = analiz.veri_cek_ve_hesapla(sembol)
+        
         if sonuc:
             # Unpack expanded results from analiz.py
             (fiyat, sma50, sma200, fk, pd_dd, rsi, macd_line, macd_signal, macd_hist, 
@@ -52,72 +62,58 @@ def hisse_islemcisi(sembol):
             }
 
             # --- HYBRID STRATEGY SELECTION ---
-            # Determine which engine to use based on Market Regime
-            
             strategy = "NONE"
-            
             if sma50 > sma200:
-                # 📈 BULL MARKET REGIME -> Trend Engine
                 strategy = "TREND"
                 signal, score, stop_price, target_price = trend_engine.evaluate_stock(data_dict)
             else:
-                # 📉 BEAR/RECOVERY REGIME -> Scout Engine
                 strategy = "SCOUT"
                 signal, score, stop_price, target_price = scout_engine.evaluate_stock(data_dict)
 
-            # Save to Database
-            database.veriyi_kaydet(
-                sembol, fiyat, sma50, sma200, fk, pd_dd, rsi, macd_line, macd_signal, macd_hist, 
-                adx, dmp, dmn, hacim_orani,
-                signal, score, stop_price, target_price, macd_hist_onceki, hacim_onceki,
-                fiyat_onceki, rsi_onceki, adx_onceki, atr,
-                strategy=strategy
-            )
+            # --- PREPARE PAYLOAD ---
+            payload = {
+                "Sembol": sembol,
+                "Fiyat": fiyat,
+                "Sma50": sma50,
+                "Sma200": sma200,
+                "Fk": fk,
+                "PdDd": pd_dd,
+                "Rsi": rsi,
+                "MacdLine": macd_line,
+                "MacdSignal": macd_signal,
+                "MacdHist": macd_hist,
+                "Adx": adx,
+                "Dmp": dmp,
+                "Dmn": dmn,
+                "HacimOrani": hacim_orani,
+                "Signal": signal,
+                "Score": score,
+                "StopPrice": stop_price,
+                "TargetPrice": target_price,
+                "MacdHistOnceki": macd_hist_onceki,
+                "HacimOnceki": hacim_onceki,
+                "FiyatOnceki": fiyat_onceki,
+                "RsiOnceki": rsi_onceki,
+                "AdxOnceki": adx_onceki,
+                "Atr": atr,
+                "Strategy": strategy,
+                "SonGuncelleme": time.strftime('%Y-%m-%dT%H:%M:%S') 
+            }
             
-            # --- NOTIFY API WITH FULL PAYLOAD (OPTIMIZATION) ---
+            # --- SEND TO RABBITMQ (Optimized) ---
             try:
-                # Prepare payload exactly as the C# API expects (Hisse model)
-                payload = {
-                    "Sembol": sembol,
-                    "Fiyat": fiyat,
-                    "Sma50": sma50,
-                    "Sma200": sma200,
-                    "Fk": fk,
-                    "PdDd": pd_dd,
-                    "Rsi": rsi,
-                    "MacdLine": macd_line,
-                    "MacdSignal": macd_signal,
-                    "MacdHist": macd_hist,
-                    "Adx": adx,
-                    "Dmp": dmp,
-                    "Dmn": dmn,
-                    "HacimOrani": hacim_orani,
-                    "Signal": signal,
-                    "Score": score,
-                    "StopPrice": stop_price,
-                    "TargetPrice": target_price,
-                    "MacdHistOnceki": macd_hist_onceki,
-                    "HacimOnceki": hacim_onceki,
-                    "FiyatOnceki": fiyat_onceki,
-                    "RsiOnceki": rsi_onceki,
-                    "AdxOnceki": adx_onceki,
-                    "Atr": atr,
-                    "Strategy": strategy,
-                    "SonGuncelleme": time.strftime('%Y-%m-%dT%H:%M:%S') 
-                    # Note: API might overwrite timestamp, but sending it is safe
-                }
-                
-                # Send to .NET API (Assuming it runs on localhost:5158)
-                # Adjust port if necessary based on config
-                api_url = "http://localhost:5158/api/market/notify"
-                requests.post(api_url, json=payload, timeout=2)
-                # print(f"📡 API Notified: {sembol}")
-                
-            except Exception as notify_err:
-                 print(f"⚠️ API Notification Failed ({sembol}): {notify_err}")
+                # Use thread-local connection
+                mq = get_rabbitmq_connection()
+                if mq:
+                    mq.publish(payload)
+                    # Do NOT close here, keep it open for reuse
+                    # print(f"🐰 Published to RabbitMQ: {sembol}")
+                else:
+                    print(f"⚠️ Skipping RabbitMQ publish for {sembol} (No Connection)")
 
+            except Exception as e:
+                print(f"⚠️ RabbitMQ Error ({sembol}): {e}")
 
-            
             print(f"✅ {sembol} [{strategy}] -> Signal: {signal} | Score: {score}")
             time.sleep(random.uniform(0.5, 1.5))
             return None
@@ -164,8 +160,6 @@ def sistemi_calistir():
     print(f"🏁 CONGRATULATIONS! All stocks completed in {bitis - baslangic:.2f} seconds.")
 
 if __name__ == "__main__":
-  
-    
     print("🔥 Sistem ısıtılıyor (Connection Warm-up)...")
     time.sleep(5) # Gerçek ısınma süresi (API'nin kendine gelmesi için)
     

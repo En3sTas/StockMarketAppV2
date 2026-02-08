@@ -28,6 +28,8 @@ builder.Services.AddSwaggerGen(c =>
 });
 
 builder.Services.AddScoped<IHisseRepository, HisseRepository>();
+builder.Services.AddScoped<IHisseService, HisseService>();
+builder.Services.AddHostedService<RabbitMQConsumer>();
 
 var app = builder.Build();
 

@@ -11,54 +11,21 @@ namespace BorsaAPI.Controllers
     [ApiController]
     public class HisselerController : ControllerBase
     {
-        private readonly IHisseRepository _hisseRepository;
+        private readonly IHisseService _hisseService;
         private readonly IHubContext<BorsaHub> _hubContext;
 
-        public HisselerController(IHisseRepository hisseRepository, IHubContext<BorsaHub> hubContext)
+        public HisselerController(IHisseService hisseService, IHubContext<BorsaHub> hubContext)
         {
-            _hisseRepository = hisseRepository;
+            _hisseService = hisseService;
             _hubContext = hubContext;
         }
 
         [HttpGet]
-        public IActionResult GetHisseler([FromQuery] decimal? maxFk, 
-            [FromQuery] decimal? minFk, 
-            [FromQuery] decimal? maxPdDd, 
-            [FromQuery] decimal? minPdDd,
-            [FromQuery] decimal? maxRsi,
-            [FromQuery] decimal? minRsi,
-            [FromQuery] decimal? maxMacdLine,
-            [FromQuery] decimal? minMacdLine, 
-            [FromQuery] decimal? maxMacdSignal,      
-            [FromQuery] decimal? minMacdSignal, 
-            [FromQuery] decimal? maxMacdHist,
-            [FromQuery] decimal? minMacdHist,
-            
-            [FromQuery] decimal? maxAdx,
-            [FromQuery] decimal? minAdx,
-            [FromQuery] decimal? maxDmp,
-            [FromQuery] decimal? minDmp,
-            [FromQuery] decimal? maxDmn,
-            [FromQuery] decimal? minDmn,
-            [FromQuery] decimal? maxHacimOrani,
-            [FromQuery] decimal? minHacimOrani,
-            [FromQuery] string? signal,
-            [FromQuery] string? strategy,
-            [FromQuery] int? minScore)
+        public IActionResult GetHisseler([FromQuery] HisselerFilterDto filter)
         {
             try
             {
-                var veriler = _hisseRepository.TumHisseleriGetir(maxFk, minFk, 
-                                                                 maxPdDd, minPdDd,
-                                                                 maxRsi,minRsi,
-                                                                 maxMacdLine, minMacdLine,
-                                                                 maxMacdSignal, minMacdSignal,
-                                                                 maxMacdHist, minMacdHist,
-                                                                 
-                                                                 maxAdx, minAdx,
-                                                                 maxDmp, minDmp,
-                                                                 maxDmn, minDmn,
-                                                                 maxHacimOrani, minHacimOrani, signal, strategy, minScore);
+                var veriler = _hisseService.GetHisseler(filter);
                 return Ok(veriler);
             }
             catch (Exception ex)
@@ -70,22 +37,22 @@ namespace BorsaAPI.Controllers
         [HttpGet("/api/market/trend")]
         public IActionResult GetTrend()
         {
-            // TREND + SCORE > 65
-            return GetHisseler(null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null, "TREND", 65);
+            // Business logic moved to Service
+            return Ok(_hisseService.GetTrendStocks());
         }
 
         [HttpGet("/api/market/scout")]
         public IActionResult GetScout()
         {
-             // SCOUT + SCORE > 65
-            return GetHisseler(null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null, "SCOUT", 65);
+             // Business logic moved to Service
+            return Ok(_hisseService.GetScoutStocks());
         }
 
         [HttpGet("/api/market/all")]
         public IActionResult GetAllStocks()
         {
-             // ALL STOCKS (No Strategy Filter, No Score Filter)
-            return GetHisseler(null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null, null, null);
+             // Business logic moved to Service
+            return Ok(_hisseService.GetAllStocks());
         }
 
         [HttpPost("/api/market/notify")]
