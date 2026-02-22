@@ -4,25 +4,28 @@ import pandas as pd
 import pandas_ta as ta
 import time
 
+# Initialize Data Providers
 print("🔗 Connecting to data providers...")
 
 try:
     tv = TvDatafeed()
     print("✅ Connection successful.")
-except:
-    print("⚠️ Initial connection error, retrying...")
+except Exception as e:
+    print(f"⚠️ Initial connection error ({e}), retrying...")
     time.sleep(3)
     tv = TvDatafeed()
 
 def hacim_analizi(df):
     try:
+        # Calculate volume moving average
         vol_sma = df['Volume'].rolling(window=20).mean()
         current_vol = df['Volume'].iloc[-1]
         avg_vol = vol_sma.iloc[-1]
         
         if avg_vol == 0 or pd.isna(avg_vol): return 0.0
         return float(current_vol / avg_vol)
-    except:
+    except Exception as e:
+        print(f"⚠️ Volume analysis error: {e}")
         return 0.0
 
 def safe_float(val):
@@ -30,6 +33,7 @@ def safe_float(val):
     return float(val)
 
 def tv_veri_cek_retry(symbol, retries=3):
+    # Retry logic for fetching data from TvDatafeed
     for i in range(retries):
         try:
             df = tv.get_hist(symbol=symbol, exchange='BIST', interval=Interval.in_daily, n_bars=5000)
@@ -47,7 +51,7 @@ def tv_veri_cek_retry(symbol, retries=3):
 
 def veri_cek_ve_hesapla(sembol):
     try:
-      
+        # Normalize symbol format
         sembol = sembol.upper().strip()
         tv_symbol = sembol.replace(".IS", "")
         
@@ -56,12 +60,13 @@ def veri_cek_ve_hesapla(sembol):
         else:
             yf_symbol = sembol
 
-       
+        # Fetch historical data
         df = tv_veri_cek_retry(tv_symbol)
         
         if df is None or df.empty:
             return None
 
+        # Standardize column names
         df.rename(columns={'open': 'Open', 'high': 'High', 'low': 'Low', 'close': 'Close', 'volume': 'Volume'}, inplace=True)
 
         if len(df) < 200: return None
@@ -71,7 +76,7 @@ def veri_cek_ve_hesapla(sembol):
         fk_orani = 0.0
         pd_dd = 0.0
         
-        # YFinance Retry Mekanizması Eklendi
+        # Fetch fundamental data from Yahoo Finance with retry
         for _ in range(3):
             try:
                 info = yf.Ticker(yf_symbol).info
@@ -79,11 +84,12 @@ def veri_cek_ve_hesapla(sembol):
                     fk_orani = safe_float(info.get('trailingPE', 0))
                     pd_dd = safe_float(info.get('priceToBook', 0))
                     break
-            except:
+            except Exception as e:
+                print(f"⚠️ Yahoo Finance retry ({e})")
                 time.sleep(1)
                 continue
 
-       
+        # Calculate Technical Indicators
         df.ta.sma(length=50, append=True)
         df.ta.sma(length=200, append=True)
         df.ta.rsi(length=14, append=True)
@@ -91,6 +97,7 @@ def veri_cek_ve_hesapla(sembol):
         df.ta.adx(length=14, append=True)
         df.ta.atr(length=14, append=True)
 
+        # Return analyzed data
         return (
             safe_float(guncel_fiyat), 
             safe_float(df['SMA_50'].iloc[-1]),
@@ -105,20 +112,38 @@ def veri_cek_ve_hesapla(sembol):
             safe_float(df['DMP_14'].iloc[-1]), 
             safe_float(df['DMN_14'].iloc[-1]), 
             hacim_analizi(df),
-            # NEW: Trading Engine Data
-            safe_float(df['High'].rolling(20).max().iloc[-1]), # Swing High (not used yet but good to have)
-            safe_float(df['Low'].rolling(20).min().iloc[-1]),  # Swing Low (for stop loss)
-            safe_float(df['MACDh_12_26_9'].iloc[-2]),          # MACD Hist Previous (momentum check)
-            hacim_analizi(df[:-1]),                            # Volume Ratio Previous (divergence check)
-            safe_float(df['SMA_50'].iloc[-2]),                 # SMA50 Previous (slope check)
-            safe_float(df['RSI_14'].iloc[-2]),                 # RSI Previous
-            safe_float(df['Close'].iloc[-2]),                   # Price Previous
-            safe_float(df['ADX_14'].iloc[-2]),                  # ADX Previous
-            safe_float(df['ATRr_14'].iloc[-1])                 # ATR (Average True Range)
+            # Trading Engine specific data points
+            safe_float(df['High'].rolling(20).max().iloc[-1]), 
+            safe_float(df['Low'].rolling(20).min().iloc[-1]),  
+            safe_float(df['MACDh_12_26_9'].iloc[-2]),          
+            safe_float(df['Volume'].iloc[-2] / df['Volume'].rolling(window=20).mean().iloc[-2]) if df['Volume'].rolling(window=20).mean().iloc[-2] > 0 else 0.0,  # Previous day's volume ratio
+            safe_float(df['SMA_50'].iloc[-2]),                 
+            safe_float(df['RSI_14'].iloc[-2]),                 
+            safe_float(df['Close'].iloc[-2]),                   
+            safe_float(df['ADX_14'].iloc[-2]),                  
+            safe_float(df['ATRr_14'].iloc[-1]),                 
+            df 
         )
 
     except Exception as e:
         print(f"❌ General Code Error ({sembol}): {e}")
+        return None
+
+def get_market_index():
+    """
+    Fetches XU100 (BIST 100) data for Market Regime Analysis.
+    """
+    try:
+        # Attempt to fetch market index from multiple symbol variations
+        for sym in ["XU100", "BIST100", "BIS100"]:
+            df = tv.get_hist(symbol=sym, exchange='BIST', interval=Interval.in_daily, n_bars=300)
+            if df is not None and not df.empty:
+                df.rename(columns={'open': 'Open', 'high': 'High', 'low': 'Low', 'close': 'Close', 'volume': 'Volume'}, inplace=True)
+                return df
+        print("⚠️ Could not fetch Market Index (XU100). Defaulting to Sideways regime.")
+        return None
+    except Exception as e:
+        print(f"❌ Error fetching Market Index: {e}")
         return None
 
 if __name__ == "__main__":

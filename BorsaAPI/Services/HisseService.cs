@@ -1,3 +1,4 @@
+
 using BorsaAPI.Models;
 
 namespace BorsaAPI.Services
@@ -18,20 +19,40 @@ namespace BorsaAPI.Services
 
         public List<Hisse> GetTrendStocks()
         {
-            // TREND + SCORE > 65
+            // Default Trend Filter (Score > 65)
             return _hisseRepository.TumHisseleriGetir(new HisselerFilterDto { Strategy = "TREND", MinScore = 65 });
         }
 
         public List<Hisse> GetScoutStocks()
         {
-            // SCOUT + SCORE > 65
+            // Default Scout Filter (Score > 65)
             return _hisseRepository.TumHisseleriGetir(new HisselerFilterDto { Strategy = "SCOUT", MinScore = 65 });
         }
 
         public List<Hisse> GetAllStocks()
         {
-            // ALL STOCKS (No Strategy Filter, No Score Filter)
             return _hisseRepository.TumHisseleriGetir(new HisselerFilterDto());
+        }
+
+        public List<Hisse> GetTrendStocksWithFilters(HisselerFilterDto filter)
+        {
+            // Force TREND strategy + Merge Filters
+            filter.Strategy = "TREND";
+            filter.MinScore = filter.MinScore ?? 65; 
+            return _hisseRepository.TumHisseleriGetir(filter);
+        }
+
+        public List<Hisse> GetScoutStocksWithFilters(HisselerFilterDto filter)
+        {
+            // Force SCOUT strategy + Merge Filters
+            filter.Strategy = "SCOUT";
+            filter.MinScore = filter.MinScore ?? 65; 
+            return _hisseRepository.TumHisseleriGetir(filter);
+        }
+
+        public List<Hisse> GetAllStocksWithFilters(HisselerFilterDto filter)
+        {
+            return _hisseRepository.TumHisseleriGetir(filter);
         }
     }
 }

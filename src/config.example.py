@@ -1,10 +1,25 @@
-# Database Configuration for PostgreSQL
+
+import os
+from dotenv import load_dotenv
+
+# Load .env file from project root
+load_dotenv(os.path.join(os.path.dirname(__file__), '..', '.env'))
+
+# Database Connection Settings (reads from .env)
 DB_AYARLARI = {
-    "host": "localhost",
-    "port": 5432,
-    "database": "borsa_db",  # Change to your database name
-    "user": "postgres",      # Change to your PostgreSQL username
-    "password": "CHANGE_THIS_PASSWORD"  # Change to your PostgreSQL password
+    "host": os.getenv("DB_HOST", "localhost"),
+    "port": int(os.getenv("DB_PORT", "5433")),
+    "database": os.getenv("DB_NAME", "borsa_db"),       # Change to your database name
+    "user": os.getenv("DB_USER", "postgres"),            # Change to your PostgreSQL username
+    "password": os.getenv("DB_PASSWORD", "CHANGE_THIS_PASSWORD")  # Change to your PostgreSQL password
+}
+
+# RabbitMQ Connection Settings (reads from .env)
+RABBITMQ_AYARLARI = {
+    "host": os.getenv("RABBITMQ_HOST", "localhost"),
+    "port": int(os.getenv("RABBITMQ_PORT", "5672")),
+    "user": os.getenv("RABBITMQ_USER", "guest"),
+    "password": os.getenv("RABBITMQ_PASSWORD", "CHANGE_THIS_PASSWORD")
 }
 
 # Turkish Stock Symbols to Monitor (BIST - Borsa Istanbul)

@@ -1,50 +1,34 @@
 
 def hard_filters(data):
     """
-    Layer 1: Hard Filters (Must Pass)
-    Returns True if stock is tradeable
-    
-    SCOUT STRATEGY:
-    - SMA50 < SMA200 (Bear Market / Recovery Phase)
-    - Price > SMA50 (Breakout from medium-term average)
-    - Volume > 1.2 (Strong buying interest)
-    - MACD > 0 (Momentum shifted positive)
-    - RSI [40-65] (Not overbought, room to run)
+    Applies strict filtering criteria to potential candidates.
+    Returns True if the stock meets all tradeability requirements.
     """
     try:
-        # 1. Trend Condition: SMA50 < SMA200 (Counter-Trend / Reversal)
+        # Trend Condition: Counter-trend or reversal setup (SMA50 < SMA200)
         if not (data['sma50'] < data['sma200']):
             return False
             
-        # 2. Breakout Condition: Price must be above SMA50
+        # Breakout Condition: Price must be above SMA50
         if not (data['fiyat'] > data['sma50']):
             return False
 
-        # 3. Minimum Liquidity / Volume Confirmation
-        # "Hacimsiz yükselişler elenmeli"
-        if data['hacim_orani'] <= 1.2:
+        # Volume Condition: Ensure minimum liquidity (relaxed to catch quiet breakouts)
+        if data['hacim_orani'] <= 0.8:
             return False
             
-        # 4. Momentum Base Requirements
-        if data['macd_hist'] <= 0: return False # MACD Positive
-        if not (40 <= data['rsi'] <= 65): return False # RSI Range [40-65]
+        # Momentum Condition: Positive MACD and healthy RSI range
+        if data['macd_hist'] <= 0: return False 
+        if not (35 <= data['rsi'] <= 70): return False 
 
         return True
     except Exception as e:
         print(f"Error in hard_filters: {e}")
         return False
 
-# --- SCORING FUNCTIONS ---
-
 def calculate_category_scores(data):
     """
-    Returns individual category scores for SCOUT strategy.
-    
-    Weights:
-    - Trend: 0% (Not focused on trend strength)
-    - Volume: 40%
-    - Momentum: 40%
-    - Breakout Quality: 20%
+    Calculates scores for individual categories: Volume, Momentum, and Breakout.
     """
     scores = {
         'volume': 0,
@@ -52,27 +36,26 @@ def calculate_category_scores(data):
         'breakout': 0
     }
     
-    # Helper for safe access
+    # Helper for safe key access
     def get(key, default=0):
         return data.get(key, default)
 
-    # 1. VOLUME (40 Points Max)
+    # Volume Scoring
     hacim_orani = data['hacim_orani']
     
     if hacim_orani > 2.0:
-        scores['volume'] += 40 # Perfect
+        scores['volume'] += 40 
     elif hacim_orani > 1.5:
-        scores['volume'] += 30 # Great
+        scores['volume'] += 30 
     elif hacim_orani > 1.2:
-        scores['volume'] += 20 # Good
+        scores['volume'] += 20 
         
-    # Bonus for volume increase
+    # Bonus: Increasing Volume
     if hacim_orani > get('hacim_onceki'):
         if scores['volume'] < 40:
             scores['volume'] = min(40, scores['volume'] + 5)
 
-    # 2. MOMENTUM (40 Points Max)
-    # MACD/RSI Increase vs Previous Day
+    # Momentum Scoring
     rsi = data['rsi']
     macd_hist = data['macd_hist']
     
@@ -82,42 +65,40 @@ def calculate_category_scores(data):
     if macd_hist > get('macd_hist_onceki'):
         scores['momentum'] += 15
         
-    # MACD Line is positive (Already checked in hard filter, but reward magnitude)
+    # Bonus: Positive MACD Line
     if data['macd_line'] > 0.1:
         scores['momentum'] += 10
         
-    # 3. BREAKOUT QUALITY (20 Points Max)
+    # Breakout Quality Scoring
     fiyat = data['fiyat']
     sma50 = data['sma50']
     
-    # Distance from SMA50 (Close is better, usually. But we want clear breakout)
-    # If price is > 1% above SMA50 but less than 5% (Healthy breakout, not extended)
+    # Calculate distance from SMA50
     pct_above = (fiyat - sma50) / sma50
     if 0.01 <= pct_above <= 0.05:
         scores['breakout'] += 20
     elif pct_above > 0.05:
-        scores['breakout'] += 10 # A bit extended
+        scores['breakout'] += 10 
     else:
-        scores['breakout'] += 10 # Just barely above
+        scores['breakout'] += 10 
         
     return scores
 
 def calculate_total_score(data):
     """
-    Calculates total score.
-    Returns: (total_score, category_scores_dict)
+    Aggregates category scores into a total score (capped at 100).
     """
     category_scores = calculate_category_scores(data)
     total_score = sum(category_scores.values())
     
-    # Cap at 100 purely theoretical
     total_score = min(100, total_score)
     
     return total_score, category_scores
 
-# --- DECISION ENGINE ---
-
 def generate_signal(total_score):
+    """
+    Determines the trading signal based on the total score.
+    """
     if total_score >= 80:
         return 'STRONG_BUY'
     elif total_score >= 60:
@@ -129,17 +110,17 @@ def generate_signal(total_score):
 
 def calculate_stop_and_target(fiyat, atr):
     """
-    Scout Strategy Risk Management:
-    Stop: 2.0 * ATR (Tighter stop for reversals)
-    Target: Risk * 3.0 (Wider target for catching the bottom)
+    Calculates dynamic stop-loss and profit target levels based on ATR.
     """
     if atr <= 0:
         atr = fiyat * 0.03 
         
+    # Stop-Loss: 2.0 ATR
     stop_distance = 2.0 * atr
     stop_price = fiyat - stop_distance
     stop_price = max(0.01, stop_price)
             
+    # Target: 3.0 Risk Reward Ratio
     risk = fiyat - stop_price
     multiplier = 3.0
     
@@ -149,26 +130,22 @@ def calculate_stop_and_target(fiyat, atr):
 
 def evaluate_stock(data):
     """
-    Main entry point for scout engine
-    Returns: (signal, score, stop_price, target_price)
+    Main execution function for the Scout strategy.
     """
-    # 1. Hard Filters
+    # Apply Hard Filters
     if not hard_filters(data):
         return 'NO_TRADE', 0, 0, 0
         
-    # 2. Scoring
+    # Calculate Scores
     total_score, category_scores = calculate_total_score(data)
     
-    # 3. Decision
+    # Generate Signal
     signal = generate_signal(total_score)
     
-    # 4. Stop/Target
+    # Calculate Risk Levels
     stop_price, target_price = calculate_stop_and_target(
         data['fiyat'], 
         data.get('atr', 0)
     )
     
-    # DO NOT RESET TARGETS on NO_TRADE
-    pass
-        
     return signal, total_score, stop_price, target_price

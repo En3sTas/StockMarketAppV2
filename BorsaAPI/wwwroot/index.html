@@ -42,6 +42,10 @@
                         class="tab-passive px-6 py-2 rounded-md text-sm font-bold transition flex items-center gap-2 hover:text-gray-400">
                         <i class="fa-solid fa-list"></i> Tüm Hisseler
                     </button>
+                    <button onclick="switchTab('pro')" id="tab-pro"
+                        class="tab-passive px-6 py-2 rounded-md text-sm font-bold transition flex items-center gap-2 hover:text-purple-400">
+                        <i class="fa-solid fa-building-columns"></i> Institutional
+                    </button>
                     <button onclick="switchTab('portfolio')" id="tab-portfolio"
                         class="tab-passive px-6 py-2 rounded-md text-sm font-bold transition flex items-center gap-2">
                         <i class="fa-solid fa-wallet"></i> Portföyüm
@@ -291,6 +295,54 @@
                             <tbody id="hisseTablosu" class="divide-y divide-gray-800 text-sm font-medium">
                                 <tr>
                                     <td colspan="12" class="p-12 text-center text-gray-500">Veriler bekleniyor...</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div id="pro-view" class="hidden grid grid-cols-12 gap-6">
+            <div class="col-span-12">
+                <div class="glass rounded-xl overflow-hidden shadow-2xl min-h-[500px]">
+                    <div class="px-6 py-4 border-b border-gray-800 flex justify-between items-center bg-[#0f1522]">
+                        <h3 class="font-bold text-white flex items-center gap-2 text-lg">
+                            <i class="fa-solid fa-building-columns text-purple-500"></i> Institutional Grade Analysis
+                        </h3>
+                        <div class="flex gap-2">
+                            <select id="proStrategyFilter" onchange="renderProTable(globalData)"
+                                class="bg-gray-800 text-xs text-white p-2 rounded border border-gray-700">
+                                <option value="ALL">All Strategies</option>
+                                <option value="TREND">Trend Followers</option>
+                                <option value="BREAKOUT">Breakout / Volume</option>
+                                <option value="REVERSAL">Mean Reversion</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left border-collapse">
+                            <thead>
+                                <tr
+                                    class="bg-[#0f1522] text-gray-400 text-[11px] uppercase tracking-wider border-b border-gray-800 h-12">
+                                    <th onclick="sortTable('sembol')"
+                                        class="p-4 font-bold text-white cursor-pointer hover:text-purple-400">Sembol
+                                    </th>
+                                    <th onclick="sortTable('fiyat')" class="p-4 font-semibold cursor-pointer">Fiyat</th>
+                                    <th onclick="sortTable('marketRegime')"
+                                        class="p-4 font-semibold text-center cursor-pointer">Piyasa Rejimi</th>
+                                    <th onclick="sortTable('mainStrategy')"
+                                        class="p-4 font-semibold text-center cursor-pointer">Ana Strateji</th>
+                                    <th class="p-4 font-semibold text-left">Sinyal Etiketleri (Tags)</th>
+                                    <th onclick="sortTable('confidenceScore')"
+                                        class="p-4 font-semibold text-center cursor-pointer">Güven Skoru</th>
+                                    <th class="p-4 font-semibold text-right">İşlem</th>
+                                </tr>
+                            </thead>
+                            <tbody id="proTablosu" class="divide-y divide-gray-800 text-sm font-medium">
+                                <tr>
+                                    <td colspan="7" class="p-12 text-center text-gray-500">Veriler Yükleniyor...</td>
                                 </tr>
                             </tbody>
                         </table>

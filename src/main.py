@@ -1,3 +1,4 @@
+
 import sys
 import os
 import time
@@ -7,26 +8,29 @@ import json
 from concurrent.futures import ThreadPoolExecutor
 import threading
 
-# Determine local directory and add to path
+# Add local directory to path
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
 import config 
-# from core import database # REMOVED: Direct DB access
 from core import analiz
-from core.rabbitmq_manager import RabbitMQManager # ADDED: RabbitMQ
+from core.rabbitmq_manager import RabbitMQManager 
 from config import HISSELER
 
-# Import New Engines
+# Engines
 from core import trend_engine
 from core import scout_engine
+from core import pro_engine
 
 MAX_WORKERS = 3
-data_lock = threading.Lock()
-# Thread-local storage for RabbitMQ connections
 thread_local = threading.local()
 
+# Global Market Context
+market_index_df = None
+
 def get_rabbitmq_connection():
-    """Get or create a thread-local RabbitMQ connection."""
+    """
+    Retrieves or creates a thread-local RabbitMQ connection.
+    """
     if not hasattr(thread_local, "mq"):
         try:
             thread_local.mq = RabbitMQManager()
@@ -36,20 +40,21 @@ def get_rabbitmq_connection():
     return thread_local.mq
 
 def hisse_islemcisi(sembol):
+    """
+    Processes a single stock symbol: fetches data, runs strategies, and publishes results.
+    """
     print(f"Checking: {sembol}...")
     try:
-        # Critical Section: TV Datafeed is likely not thread-safe or reusing buffers
-        with data_lock:
-            sonuc = analiz.veri_cek_ve_hesapla(sembol)
+        # Each call fetches independent data for a different symbol — no lock needed
+        sonuc = analiz.veri_cek_ve_hesapla(sembol)
         
         if sonuc:
-            # Unpack expanded results from analiz.py
             (fiyat, sma50, sma200, fk, pd_dd, rsi, macd_line, macd_signal, macd_hist, 
              adx, dmp, dmn, hacim_orani, 
              swing_high, swing_low, macd_hist_onceki, hacim_onceki, 
-             sma50_onceki, rsi_onceki, fiyat_onceki, adx_onceki, atr) = sonuc
+             sma50_onceki, rsi_onceki, fiyat_onceki, adx_onceki, atr,
+             current_df) = sonuc
 
-            # Prepare data dictionary for trading engine
             data_dict = {
                 'sembol': sembol, 'fiyat': fiyat, 'sma50': sma50, 'sma200': sma200,
                 'fk': fk, 'pd_dd': pd_dd, 'rsi': rsi,
@@ -61,7 +66,7 @@ def hisse_islemcisi(sembol):
                 'adx_onceki': adx_onceki, 'atr': atr
             }
 
-            # --- HYBRID STRATEGY SELECTION ---
+            # Strategy Selection (Legacy)
             strategy = "NONE"
             if sma50 > sma200:
                 strategy = "TREND"
@@ -70,7 +75,32 @@ def hisse_islemcisi(sembol):
                 strategy = "SCOUT"
                 signal, score, stop_price, target_price = scout_engine.evaluate_stock(data_dict)
 
-            # --- PREPARE PAYLOAD ---
+            # Pro Engine Analysis (Institutional)
+            pro_result = pro_engine.evaluate_stock(current_df, market_index_df)
+            
+            pro_tags = []
+            pro_main_strategy = "NEUTRAL"
+            pro_regime = "SIDEWAYS"
+            pro_conf_score = 0
+            
+            if pro_result:
+                pro_tags = pro_result.get('tags', [])
+                pro_main_strategy = pro_result.get('main_strategy', 'NEUTRAL')
+                pro_regime = pro_result.get('market_regime', 'SIDEWAYS')
+                pro_conf_score = pro_result.get('confidence_score', 0)
+
+            # Fix #6: Regime-Aware Stop-Loss Adjustment
+            if pro_regime == "BEAR" and stop_price > 0:
+                # Tighten stop in bear regime (move stop closer to entry)
+                risk_distance = fiyat - stop_price
+                stop_price = fiyat - (risk_distance * 0.5)  # Cut risk in half
+                # Reduce target in bear regime
+                reward_distance = target_price - fiyat
+                target_price = fiyat + (reward_distance * 0.6)  # Conservative target
+                stop_price = round(stop_price, 2)
+                target_price = round(target_price, 2)
+
+            # Construct Payload
             payload = {
                 "Sembol": sembol,
                 "Fiyat": fiyat,
@@ -97,50 +127,68 @@ def hisse_islemcisi(sembol):
                 "AdxOnceki": adx_onceki,
                 "Atr": atr,
                 "Strategy": strategy,
-                "SonGuncelleme": time.strftime('%Y-%m-%dT%H:%M:%S') 
+                "SonGuncelleme": time.strftime('%Y-%m-%dT%H:%M:%S'),
+                "Tags": pro_tags,
+                "MainStrategy": pro_main_strategy,
+                "MarketRegime": pro_regime,
+                "ConfidenceScore": pro_conf_score
             }
             
-            # --- SEND TO RABBITMQ (Optimized) ---
+            # Publish to RabbitMQ
             try:
-                # Use thread-local connection
                 mq = get_rabbitmq_connection()
                 if mq:
                     mq.publish(payload)
-                    # Do NOT close here, keep it open for reuse
-                    # print(f"🐰 Published to RabbitMQ: {sembol}")
                 else:
                     print(f"⚠️ Skipping RabbitMQ publish for {sembol} (No Connection)")
 
             except Exception as e:
                 print(f"⚠️ RabbitMQ Error ({sembol}): {e}")
 
-            print(f"✅ {sembol} [{strategy}] -> Signal: {signal} | Score: {score}")
+            print(f"✅ {sembol} [{strategy}] -> Signal: {signal} | Score: {score} | Pro: {pro_main_strategy}")
             time.sleep(random.uniform(0.5, 1.5))
             return None
         else:
             print(f"⚠️ {sembol} returned empty -> Moved to next round.")
             return sembol 
-
+            
     except Exception as e:
         print(f"❌ Error ({sembol}): {e} -> Moved to next round.")
         return sembol
 
 def sistemi_isit():
-    """Sistemi başlatmadan önce bağlantıları ısıtır."""
-    print("🔥 Sistem ısıtılıyor (Connection Warm-up)...")
+    """
+    Warms up the system connection before starting the main loop.
+    """
+    print("🔥 Warming up system connection...")
     try:
-        # Rastgele güçlü bir hisse ile test isteği atıyoruz
         analiz.veri_cek_ve_hesapla("THYAO") 
-        print("✅ Sistem ısındı ve kullanıma hazır!")
+        print("✅ System ready!")
     except Exception as e:
-        print(f"⚠️ Isınma sırasında hata (önemsiz): {e}")
+        print(f"⚠️ Warm-up error (minor): {e}")
     time.sleep(2)
 
 def sistemi_calistir():
+    """
+    Main execution cycle. Fetches market context and processes all stocks using workers.
+    """
+    global market_index_df
     baslangic = time.time()
+    
+    # 1. Fetch Market Context (Index)
+    print("🌍 Fetching Global Market Context (XU100)...")
+    market_index_df = analiz.get_market_index()
+    if market_index_df is not None:
+         regime = pro_engine.get_market_regime(market_index_df)[0]
+         print(f"🌍 Market Regime Detected: {regime}")
+    else:
+         print("⚠️ Market Context Unavailable. Creating in isolation.")
+    
     print(f"🚀 Stock Market Robot (3 Worker - Infinity mode)...")
     kuyruk = HISSELER.copy()
     tur_sayisi = 1
+    
+    # Process Queue with Retries
     while len(kuyruk) > 0:
         print(f"\n🔄 ROUND {tur_sayisi} STARTING | Remaining Stocks: {len(kuyruk)}")
         yeni_kuyruk = []
@@ -156,25 +204,26 @@ def sistemi_calistir():
             print(f"💤 Cooling down for {bekleme_suresi} seconds...")
             time.sleep(bekleme_suresi)
         tur_sayisi += 1
+        
     bitis = time.time()
     print(f"🏁 CONGRATULATIONS! All stocks completed in {bitis - baslangic:.2f} seconds.")
 
 if __name__ == "__main__":
-    print("🔥 Sistem ısıtılıyor (Connection Warm-up)...")
-    time.sleep(5) # Gerçek ısınma süresi (API'nin kendine gelmesi için)
+    print("🔥 Warming up system...")
+    time.sleep(5) 
     
-    print("✅ Sistem ısındı ve kullanıma hazır!")
-    print("🚀 Sistem Başlatılıyor... (Canlı Mod: 60sn)\n")
+    print("✅ System ready!")
+    print("🚀 Starting System... (Live Mode: 60s loop)\n")
     
-    # --- SONSUZ DÖNGÜ ---  
+    # Infinite Loop
     while True:
         try:
             sistemi_calistir()
-            print("⏳ Bir sonraki güncelleme için 1 gün bekleniyor...") 
+            print("⏳ Waiting 1 day for next update...") 
             time.sleep(86400) 
         except KeyboardInterrupt:
-            print("\n🛑 Program durduruldu.")
+            print("\n🛑 Program stopped.")
             break
         except Exception as e:
-            print(f"💥 Kritik Döngü Hatası: {e}")
+            print(f"💥 Critical Loop Error: {e}")
             time.sleep(10)

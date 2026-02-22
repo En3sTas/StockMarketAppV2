@@ -1,3 +1,4 @@
+
 using BorsaAPI.Hubs;
 using BorsaAPI.Models;
 using Microsoft.AspNetCore.SignalR;
@@ -12,22 +13,28 @@ namespace BorsaAPI.Services
     {
         private readonly IServiceProvider _serviceProvider;
         private readonly ILogger<RabbitMQConsumer> _logger;
+        private readonly IConfiguration _configuration;
         private IConnection _connection;
         private IModel _channel;
         private const string QueueName = "stock_updates";
 
-        public RabbitMQConsumer(IServiceProvider serviceProvider, ILogger<RabbitMQConsumer> logger)
+        public RabbitMQConsumer(IServiceProvider serviceProvider, ILogger<RabbitMQConsumer> logger, IConfiguration configuration)
         {
             _serviceProvider = serviceProvider;
             _logger = logger;
+            _configuration = configuration;
             InitializeRabbitMQ();
         }
 
         private void InitializeRabbitMQ()
         {
-            var factory = new ConnectionFactory() { HostName = "localhost" }; // Docker uses 'rabbitmq' hostname usually, but for local run 'localhost' is fine if port mapped.
-            // In Docker environment, hostname might need to be 'rabbitmq' if running inside a container network.
-            // Since we are running 'dotnet run' locally (on host), 'localhost' targets the exposed port 5672.
+            var factory = new ConnectionFactory()
+            {
+                HostName = _configuration["RabbitMQ:HostName"] ?? "localhost",
+                Port = int.Parse(_configuration["RabbitMQ:Port"] ?? "5672"),
+                UserName = _configuration["RabbitMQ:UserName"] ?? "guest",
+                Password = _configuration["RabbitMQ:Password"] ?? "guest"
+            };
             
             try
             {
@@ -66,13 +73,11 @@ namespace BorsaAPI.Services
                             var repository = scope.ServiceProvider.GetRequiredService<IHisseRepository>();
                             var hubContext = scope.ServiceProvider.GetRequiredService<IHubContext<BorsaHub>>();
 
-                            // 1. Save to Database
+                            // 1. Save to DB
                             repository.Kaydet(hisse);
-                            // _logger.LogInformation($"Saved {hisse.Sembol} to DB.");
-
-                            // 2. Broadcast via SignalR
+                            
+                            // 2. Real-time Broadcast
                             await hubContext.Clients.All.SendAsync("ReceiveStockUpdate", hisse);
-                            // _logger.LogInformation($"Broadcasted {hisse.Sembol} via SignalR.");
                         }
                     }
                 }

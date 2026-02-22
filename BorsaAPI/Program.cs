@@ -1,39 +1,42 @@
+
 using BorsaAPI.Models;
 using BorsaAPI.Services;
-using BorsaAPI.Hubs; // Import Namespace
+using BorsaAPI.Hubs;
 using Microsoft.OpenApi.Models;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// --- SIGNALR SERVICE ---
+// 1. Services Configuration
 builder.Services.AddSignalR();
 
 builder.Services.AddCors(options =>
 {
-    options.AddPolicy("HerkesGelsinPolitikasi", policy =>
+    options.AddPolicy("AllowAll", policy =>
     {
-        policy.SetIsOriginAllowed(origin => true) // Allow any origin
+        policy.SetIsOriginAllowed(origin => true) 
               .AllowAnyMethod()
               .AllowAnyHeader()
-              .AllowCredentials(); // SignalR needs this for connection stability
+              .AllowCredentials(); 
     });
 });
+
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
-
 
 builder.Services.AddSwaggerGen(c =>
 {
     c.SwaggerDoc("v1", new OpenApiInfo { Title = "BorsaAPI", Version = "v1" });
 });
 
+// Dependency Injection
 builder.Services.AddScoped<IHisseRepository, HisseRepository>();
 builder.Services.AddScoped<IHisseService, HisseService>();
 builder.Services.AddHostedService<RabbitMQConsumer>();
 
 var app = builder.Build();
 
-app.UseCors("HerkesGelsinPolitikasi");
+// 2. HTTP Request Pipeline
+app.UseCors("AllowAll");
 
 if (app.Environment.IsDevelopment())
 {
@@ -46,15 +49,14 @@ if (app.Environment.IsDevelopment())
 
 app.UseHttpsRedirection();
 app.UseAuthorization();
-app.UseCors("HerkesGelsinPolitikasi");
 
-// --- STATIC FILES (Frontend Hosting) ---
-app.UseDefaultFiles(); // index.html automatic lookup
-app.UseStaticFiles();  // wwwroot access
+// Static Files (for Frontend hosting)
+app.UseDefaultFiles(); 
+app.UseStaticFiles();  
 
 app.MapControllers();
 
-// --- SIGNALR ENDPOINT ---
+// SignalR Endpoints
 app.MapHub<BorsaHub>("/hubs/borsa");
 
 app.Run();

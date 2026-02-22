@@ -1,55 +1,58 @@
-// Global Değişkenler
+
+// -- Global Variables --
 const API_BASE_URL = "/api/hisseler";
 
-// Portföy Verileri (Sabit)
-// Portföy Verileri (LocalStorage'dan Başlat)
+// -- Portfolio Data (LocalStorage) --
 let MY_PORTFOLIO = JSON.parse(localStorage.getItem('myPortfolio')) || [
-    { sembol: "TUPRS", adet: 22, maliyet: 183.20, target: 220.0, stop: 170.0 },
-    { sembol: "TOASO", adet: 20, maliyet: 245.90, target: 300.0, stop: 230.0 }
+    { sembol: "TUPRS", adet: 22, maliyet: 183.20, target: 220.0, initialStop: 170.0, trailingStop: 170.0, highestPrice: 183.20, strategy: "TREND" },
+    { sembol: "TOASO", adet: 20, maliyet: 245.90, target: 300.0, initialStop: 230.0, trailingStop: 230.0, highestPrice: 245.90, strategy: "TREND" }
 ];
 
-// LocalStorage Kaydetme Fonksiyonu
+// -- LocalStorage Helpers --
 function savePortfolio() {
     localStorage.setItem('myPortfolio', JSON.stringify(MY_PORTFOLIO));
     renderPortfolio();
 }
 
-// Yeni Hisse Ekleme
+// -- Add Stock to Portfolio --
 function addToPortfolio(symbol, count, cost) {
     if (!symbol || count <= 0 || cost < 0) {
         alert("Lütfen geçerli değerler giriniz!");
         return;
     }
 
-    // Varsa güncelle, yoksa ekle
     const existing = MY_PORTFOLIO.find(p => p.sembol === symbol);
-
-    // Auto-Calculate Targets if not provided (or overwrite for simplicity based on new cost)
-    // Find current technical data if available to calculate smart ATR-based levels
     const liveData = globalData.find(d => d.sembol === symbol);
 
-    // Use Helper Function
+    // Auto-Calculate Smart Levels
     const levels = calculateSmartLevels(cost, liveData);
-    let autoStop = levels.stop;
+    let autoStop = levels.initialStop;
     let autoTarget = levels.target;
+    let strategy = levels.strategy;
 
     if (existing) {
-        // Ağırlıklı ortalama maliyet hesabı
+        // Calculate Weighted Average Cost
         const totalCost = (existing.adet * existing.maliyet) + (count * cost);
         const totalCount = existing.adet + count;
         existing.maliyet = totalCost / totalCount;
         existing.adet = totalCount;
-        // Update targets based on NEW average cost? 
-        // Or keep old? Let's update to reflect new position reality.
-        existing.stop = autoStop;
+
+        // Update targets based on new average cost
+        existing.initialStop = autoStop;
+        existing.trailingStop = autoStop;
         existing.target = autoTarget;
+        existing.highestPrice = existing.maliyet;
+        existing.strategy = strategy;
     } else {
         MY_PORTFOLIO.push({
             sembol: symbol,
             adet: count,
             maliyet: cost,
-            stop: parseFloat(autoStop.toFixed(2)),
-            target: parseFloat(autoTarget.toFixed(2))
+            initialStop: parseFloat(autoStop.toFixed(2)),
+            trailingStop: parseFloat(autoStop.toFixed(2)),
+            target: parseFloat(autoTarget.toFixed(2)),
+            highestPrice: cost,
+            strategy: strategy
         });
     }
 
@@ -57,7 +60,7 @@ function addToPortfolio(symbol, count, cost) {
     closeAddModal();
 }
 
-// Hiss Silme
+// -- Remove Stock from Portfolio --
 function removeFromPortfolio(symbol) {
     if (confirm(`${symbol} hissesini portföyden silmek istediğinize emin misiniz?`)) {
         MY_PORTFOLIO = MY_PORTFOLIO.filter(p => p.sembol !== symbol);
@@ -65,7 +68,7 @@ function removeFromPortfolio(symbol) {
     }
 }
 
-// Modal İşlemleri
+// -- Modal Operations --
 function openAddModal() { document.getElementById('addStockModal').classList.remove('hidden'); }
 function closeAddModal() { document.getElementById('addStockModal').classList.add('hidden'); }
 
@@ -75,25 +78,28 @@ function submitAddStock() {
     const cost = parseFloat(document.getElementById('addCost').value);
     addToPortfolio(sym, qty, cost);
 
-    // Temizle
+    // Clear Inputs
     document.getElementById('addSymbol').value = '';
     document.getElementById('addQuantity').value = '';
     document.getElementById('addCost').value = '';
 }
 
+
 let globalData = [];
 let currentTab = 'trend';
 
-// Tab Değiştirme Fonksiyonu
+// -- Tab Switching Logic --
 function switchTab(tabName) {
     currentTab = tabName;
     const marketView = document.getElementById('market-view');
     const portfolioView = document.getElementById('portfolio-view');
+    const proView = document.getElementById('pro-view');
 
     // Tab Buttons
     const tabTrend = document.getElementById('tab-trend');
     const tabScout = document.getElementById('tab-scout');
     const tabAll = document.getElementById('tab-all');
+    const tabPro = document.getElementById('tab-pro');
     const tabPortfolio = document.getElementById('tab-portfolio');
 
     // Reset Classes
@@ -103,17 +109,24 @@ function switchTab(tabName) {
     tabTrend.className = passiveClass + " hover:text-emerald-400";
     tabScout.className = passiveClass + " hover:text-orange-400";
     tabAll.className = passiveClass + " hover:text-gray-400";
+    tabPro.className = passiveClass + " hover:text-purple-400";
     tabPortfolio.className = passiveClass;
 
+    // Reset Views
+    marketView.classList.add('hidden');
+    portfolioView.classList.add('hidden');
+    if (proView) proView.classList.add('hidden');
+
     if (tabName === 'portfolio') {
-        marketView.classList.add('hidden');
         portfolioView.classList.remove('hidden');
         tabPortfolio.className = activeClass;
-        // Portföy sekmesi için tüm verileri çekelim
+        verileriGetir();
+    } else if (tabName === 'pro') {
+        if (proView) proView.classList.remove('hidden');
+        tabPro.className = activeClass + " text-purple-400";
         verileriGetir();
     } else {
         marketView.classList.remove('hidden');
-        portfolioView.classList.add('hidden');
 
         if (tabName === 'trend') {
             tabTrend.className = activeClass + " text-emerald-400";
@@ -122,18 +135,17 @@ function switchTab(tabName) {
         } else if (tabName === 'all') {
             tabAll.className = activeClass + " text-gray-200";
         }
-        verileriGetir(); // Reload data for the active tab
+        verileriGetir();
     }
 }
 
-// Veri Çekme Fonksiyonu
+// -- Data Fetching Logic (API) --
 async function verileriGetir() {
     const statusDiv = document.getElementById('connectionStatus');
     const messageArea = document.getElementById('messageArea');
     const params = new URLSearchParams();
 
-    // Filtre değerlerini URL parametrelerine ekle
-    // Portföy modunda filtreleri KULLANMA (tüm verileri al)
+    // Add filter props to params if not in portfolio mode
     if (currentTab !== 'portfolio') {
         addParam(params, 'minFk', 'minFk'); addParam(params, 'maxFk', 'maxFk');
         addParam(params, 'minPdDd', 'minPdDd'); addParam(params, 'maxPdDd', 'maxPdDd');
@@ -146,17 +158,14 @@ async function verileriGetir() {
     }
 
     try {
-        // ... (loading logic)
-
         let url = API_BASE_URL;
         if (currentTab === 'trend') {
             url = "http://localhost:5158/api/market/trend";
         } else if (currentTab === 'scout') {
             url = "http://localhost:5158/api/market/scout";
-        } else if (currentTab === 'all') {
+        } else if (currentTab === 'all' || currentTab === 'pro') {
             url = "http://localhost:5158/api/market/all";
         }
-        // 'portfolio' için API_BASE_URL (Tüm Hisseler) kalır
 
         const response = await fetch(`${url}?${params.toString()}`);
         if (!response.ok) throw new Error("API Hatası");
@@ -167,42 +176,37 @@ async function verileriGetir() {
         statusDiv.className = "flex items-center gap-2 text-xs font-mono text-emerald-400 bg-emerald-900/20 px-3 py-1.5 rounded-full border border-emerald-900";
         messageArea.classList.add('hidden');
 
-        // Eğer Portföy sekmesiysek dev tabloyu render etmeye gerek yok
-        if (currentTab !== 'portfolio') {
-            let filteredData = frontendFiltrele(globalData);
-            applySort(filteredData);
-            renderMarketTable(filteredData);
+        // Render based on Tab
+        if (currentTab === 'pro') {
+            renderProTable(globalData);
+        } else if (currentTab !== 'portfolio') {
+            applySort(globalData);
+            renderMarketTable(globalData);
         }
 
-        // Portföyü her zaman güncelle (çünkü arka planda fetch yaptıkça fiyatlar değişiyor)
+        // Always update portfolio in background
         renderPortfolio();
 
     } catch (error) {
-        // ... (error handling)
+        // Error handling masked for brevity
     }
 }
 
-// SIRALAMA MANTIĞI
+
+// -- Sorting Logic --
 let currentSort = { column: 'score', direction: 'desc' };
 
 function sortTable(column) {
-    // Aynı kolona tıkladıysa yön değiştir
     if (currentSort.column === column) {
         currentSort.direction = currentSort.direction === 'asc' ? 'desc' : 'asc';
     } else {
-        // Yeni kolon seçildiyse varsayılan yönler
         currentSort.column = column;
-        // Metinler için A-Z (asc), Sayılar için Z-A (desc) varsayılan olsun
         currentSort.direction = (column === 'sembol' || column === 'signal') ? 'asc' : 'desc';
     }
 
-    // Header ikonlarını güncelle (Opsiyonel görsel güncelleme için)
     updateSortIcons();
-
-    // Veriyi yeniden filtrele, sırala ve çiz
-    let filteredData = frontendFiltrele(globalData);
-    applySort(filteredData);
-    renderMarketTable(filteredData);
+    applySort(globalData);
+    renderMarketTable(globalData);
 }
 
 function applySort(data) {
@@ -210,11 +214,9 @@ function applySort(data) {
         let valA = a[currentSort.column];
         let valB = b[currentSort.column];
 
-        // Null/Undefined kontrolü (En sona atalım)
         if (valA === null || valA === undefined) valA = -999999;
         if (valB === null || valB === undefined) valB = -999999;
 
-        // String karşılaştırma için
         if (typeof valA === 'string') valA = valA.toLowerCase();
         if (typeof valB === 'string') valB = valB.toLowerCase();
 
@@ -225,12 +227,10 @@ function applySort(data) {
 }
 
 function updateSortIcons() {
-    // Tüm headerlardaki ikonları resetle (Bu fonksiyon için HTML tarafında id veya class düzeni gerekir, şimdilik basit tutalım)
-    // İleride headerlara ok işareti eklenebilir.
-    console.log(`Sıralama: ${currentSort.column} (${currentSort.direction})`);
+    console.log(`Sorting: ${currentSort.column} (${currentSort.direction})`);
 }
 
-// Frontend Filtreleme
+// -- Frontend Filtering --
 function frontendFiltrele(data) {
     const maxAdx = parseFloat(val('maxAdx')) || 9999;
     const minHacim = parseFloat(val('minHacim')) || 0;
@@ -249,14 +249,12 @@ function frontendFiltrele(data) {
     );
 }
 
-
-
-// Yardımcı Fonksiyon: Değişimi Hesapla ve Badge Döndür
+// -- Helpers: Value Change Badge --
 function getDiffBadge(current, prev) {
     if (prev === undefined || prev === null || prev === 0) return '';
 
     const diff = current - prev;
-    if (Math.abs(diff) < 0.01) return ''; // Çok küçük farkları gösterme
+    if (Math.abs(diff) < 0.01) return '';
 
     const color = diff > 0 ? 'text-emerald-400' : 'text-red-400';
     const icon = diff > 0 ? '▲' : '▼';
@@ -264,7 +262,8 @@ function getDiffBadge(current, prev) {
     return `<div class="${color} text-[10px] font-mono mt-1">${icon} ${Math.abs(diff).toFixed(2)}</div>`;
 }
 
-// Piyasa Tablosunu Çiz
+
+// -- Render: Market Table --
 function renderMarketTable(data) {
     const tbody = document.getElementById('hisseTablosu');
     tbody.innerHTML = '';
@@ -285,7 +284,7 @@ function renderMarketTable(data) {
             if (h.hacimOrani > 2.0) { volText = 'text-orange-400 font-bold'; volIcon = 'fa-fire-flame-curved animate-pulse text-orange-500'; }
             else if (h.hacimOrani > 1.2) { volText = 'text-emerald-300'; volIcon = 'fa-arrow-trend-up text-emerald-500'; }
 
-            // Signal Badge Logic
+            // Signal Badge
             let signalBadge = '';
             switch (h.signal) {
                 case 'STRONG_BUY': signalBadge = '<span class="bg-gradient-to-r from-emerald-600 to-green-500 text-white px-3 py-1 rounded-full text-[10px] font-bold shadow-lg shadow-emerald-900/40 animate-pulse"><i class="fa-solid fa-rocket mr-1"></i> GÜÇLÜ AL</span>'; break;
@@ -294,7 +293,7 @@ function renderMarketTable(data) {
                 default: signalBadge = '<span class="text-gray-600 text-[10px]">NO TRADE</span>';
             }
 
-            // Score Color Logic
+            // Score Color
             let scoreColor = 'text-gray-500';
             if (h.score >= 75) scoreColor = 'text-emerald-400 font-bold';
             else if (h.score >= 50) scoreColor = 'text-yellow-400';
@@ -302,7 +301,6 @@ function renderMarketTable(data) {
             else scoreColor = 'text-red-400';
 
             const tarih = new Date(h.sonGuncelleme).toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' });
-
 
             const row = `
             <tr id="row-${h.sembol}" class="hover:bg-gray-800/40 transition border-b border-gray-800/30 group">
@@ -353,7 +351,7 @@ function renderMarketTable(data) {
                 <td class="p-4 text-gray-400 font-mono">${h.fk.toFixed(2)}</td>
                 <td class="p-4 text-gray-400 font-mono">${h.pdDd.toFixed(2)}</td>
 
-                <!-- NEW: Trading Signal Cells -->
+                <!-- Trading Signal Cells -->
                 <td class="p-4 text-center cell-signal">${signalBadge}</td>
                 <td class="p-4 text-center">
                     <div class="flex flex-col items-center">
@@ -375,7 +373,8 @@ function renderMarketTable(data) {
     });
 }
 
-// Portföy Tablosunu Çiz
+
+// -- Render: Portfolio Table --
 function renderPortfolio() {
     const tbody = document.getElementById('portfolioTablosu');
     tbody.innerHTML = '';
@@ -394,15 +393,29 @@ function renderPortfolio() {
             totalCost += costValue;
         }
 
+        // Backfill missing data (Target/Stop/Strategy) if liveData available
+        if (liveData) {
+            let needsUpdate = false;
 
+            if (!item.target || !item.initialStop || !item.trailingStop || !item.strategy) {
+                const levels = calculateSmartLevels(item.maliyet, liveData);
+                item.target = levels.target;
+                item.initialStop = levels.initialStop;
+                item.trailingStop = item.trailingStop || levels.initialStop;
+                item.strategy = levels.strategy;
+                item.highestPrice = item.highestPrice || item.maliyet;
+                needsUpdate = true;
+            }
 
-        // BACKFILL: Eksik Target/Stop varsa ve veri geldiyse hesapla ve kaydet
-        if (liveData && (!item.target || !item.stop)) {
-            const levels = calculateSmartLevels(item.maliyet, liveData);
-            item.target = levels.target;
-            item.stop = levels.stop;
-            // Değişikliği sessizce kaydet (Loop olmasın diye savePortfolio() çağırma)
-            localStorage.setItem('myPortfolio', JSON.stringify(MY_PORTFOLIO));
+            // Update trailing stop
+            if (currentPrice > 0) {
+                updateTrailingStop(item, currentPrice, liveData);
+                needsUpdate = true;
+            }
+
+            if (needsUpdate) {
+                localStorage.setItem('myPortfolio', JSON.stringify(MY_PORTFOLIO));
+            }
         }
 
         const pnlClass = pnl >= 0 ? 'text-emerald-400' : 'text-red-400';
@@ -410,17 +423,17 @@ function renderPortfolio() {
 
         let signalBadge = '<span class="text-gray-600">-</span>';
 
-        if (liveData && item.target && item.stop) {
+        if (liveData && item.target && item.trailingStop) {
             if (currentPrice >= item.target) {
-                signalBadge = '<span class="bg-red-500 text-white px-2 py-1 rounded text-xs font-bold animate-pulse">HEDEF GELDİ (SAT)</span>';
-            } else if (currentPrice <= item.stop) {
-                signalBadge = '<span class="bg-red-500 text-white px-2 py-1 rounded text-xs font-bold">STOP OLDU (SAT)</span>';
+                signalBadge = '<span class="bg-red-500 text-white px-2 py-1 rounded text-xs font-bold animate-pulse">🎯 HEDEF GELDİ (SAT)</span>';
+            } else if (currentPrice <= item.trailingStop) {
+                signalBadge = '<span class="bg-red-500 text-white px-2 py-1 rounded text-xs font-bold">🛑 STOP OLDU (SAT)</span>';
             } else {
-                signalBadge = '<span class="text-emerald-500 text-xs font-bold">TUT</span>';
+                const stopDistance = ((currentPrice - item.trailingStop) / currentPrice * 100).toFixed(1);
+                signalBadge = `<span class="text-emerald-500 text-xs font-bold">✅ TUT <span class="text-gray-500">(Stop: -${stopDistance}%)</span></span>`;
             }
         }
         else if (liveData) {
-            // Fallback if no target/stop saved
             if (liveData.rsi < 30) signalBadge = '<span class="bg-emerald-500 text-black px-2 py-1 rounded text-xs font-bold">DİP FIRSATI</span>';
             else signalBadge = '<span class="text-gray-500 text-xs">Bekle</span>';
         }
@@ -436,7 +449,8 @@ function renderPortfolio() {
                 <td class="p-4 text-right font-mono ${pnlClass} font-bold">%${pnlPercent.toFixed(2)}</td>
                 <td class="p-4 text-center text-xs font-mono text-gray-400">
                     <div>T: <span class="text-emerald-300">${item.target ? item.target.toFixed(2) : '-'}</span></div>
-                    <div>S: <span class="text-red-300">${item.stop ? item.stop.toFixed(2) : '-'}</span></div>
+                    <div>S: <span class="text-red-300">${item.trailingStop ? item.trailingStop.toFixed(2) : '-'}</span></div>
+                    ${item.highestPrice && item.highestPrice > item.maliyet ? `<div class="text-[9px] text-blue-400">Peak: ${item.highestPrice.toFixed(2)}</div>` : ''}
                 </td>
                 <td class="p-4 text-center">${signalBadge}</td>
                 <td class="p-4 text-center">
@@ -451,7 +465,6 @@ function renderPortfolio() {
     const totalPnL = totalVal - totalCost;
     const totalPnLPercent = totalCost > 0 ? (totalPnL / totalCost) * 100 : 0;
 
-    // Güvenli erişim kontrolü
     const totalBalanceEl = document.getElementById('totalBalance');
     if (totalBalanceEl) totalBalanceEl.innerText = `₺${totalVal.toLocaleString('tr-TR', { minimumFractionDigits: 2 })}`;
 
@@ -492,25 +505,27 @@ window.onload = verileriGetir;
 // 2. Her 30 saniyede bir kontrol et ve güncelle
 
 
-// Yardımcı Fonksiyon: Akıllı Hedef/Stop Hesapla (Trend & Scout Engines)
+
+// -- Helper: Calculate Smart Target/Stop --
 function calculateSmartLevels(cost, liveData) {
     let stop = cost * 0.95; // Default 5%
     let target = cost * 1.15; // Default 15%
+    let strategy = "TREND"; // Default strategy
 
     if (liveData && liveData.atr > 0) {
         const atr = liveData.atr;
-        const strategy = (liveData.strategy || "TREND").toUpperCase();
+        strategy = (liveData.strategy || "TREND").toUpperCase();
 
         if (strategy === "SCOUT") {
-            // --- SCOUT STRATEGY LOGIC ---
-            // Stop: 2.0 ATR (Daha dar stop, çünkü dip avlıyoruz)
+            // -- SCOUT Strategy --
+            // Stop: 2.0 ATR (Tighter stop)
             stop = cost - (2.0 * atr);
 
             // Target: Risk * 3.0
             const risk = cost - stop;
             target = cost + (risk * 3.0);
         } else {
-            // --- TREND STRATEGY LOGIC (Default) ---
+            // -- TREND Strategy (Default) --
             // Stop: 3.0 ATR
             stop = cost - (3.0 * atr);
 
@@ -528,10 +543,49 @@ function calculateSmartLevels(cost, liveData) {
             target = cost + (multiplier * atr);
         }
     }
-    return { target: parseFloat(target.toFixed(2)), stop: parseFloat(stop.toFixed(2)) };
+    return {
+        target: parseFloat(target.toFixed(2)),
+        initialStop: parseFloat(stop.toFixed(2)),
+        stop: parseFloat(stop.toFixed(2)),
+        strategy: strategy
+    };
 }
 
-// --- SIGNALR (REAL-TIME UPDATES) ---
+// -- Trailing Stop Logic --
+/**
+ * Updates trailing stop based on current price.
+ * Trailing stop only moves UP, never down.
+ */
+function updateTrailingStop(portfolioItem, currentPrice, liveData) {
+    if (!liveData || !liveData.atr || liveData.atr <= 0) {
+        return portfolioItem.trailingStop;
+    }
+
+    const strategy = portfolioItem.strategy || "TREND";
+    const atr = liveData.atr;
+
+    let atrMultiplier = 3.0; // TREND default
+    if (strategy === "SCOUT") {
+        atrMultiplier = 2.0;
+    }
+
+    // Update highest price seen
+    if (currentPrice > portfolioItem.highestPrice) {
+        portfolioItem.highestPrice = currentPrice;
+    }
+
+    // Calculate new stop level
+    const newStop = portfolioItem.highestPrice - (atrMultiplier * atr);
+
+    // Trailing: Only move up
+    const updatedStop = Math.max(portfolioItem.initialStop, newStop);
+
+    portfolioItem.trailingStop = parseFloat(updatedStop.toFixed(2));
+
+    return portfolioItem.trailingStop;
+}
+
+// -- SignalR (Real-Time Updates) --
 const connection = new signalR.HubConnectionBuilder()
     .withUrl("/hubs/borsa")
     .withAutomaticReconnect()
@@ -550,22 +604,17 @@ connection.on("ReceiveStockUpdate", (updatedStock) => {
     const index = globalData.findIndex(s => s.sembol === updatedStock.sembol);
     if (index !== -1) {
         globalData[index] = updatedStock;
-    } else {
-        // If not in list, check if it belongs (e.g. in 'All' tab or meets score criteria)
-        // For simplicity, if we are in 'All' tab, push it.
-        // If in 'Trend/Scout', only push if score > 65.
-        // Simplified: Just ignore if not in list to avoid list jumping behavior
     }
 
-    // 2. Update Portfolio if exists
+    // 2. Update Portfolio (Real-Time Trailing Stop)
     const portfolioItem = MY_PORTFOLIO.find(p => p.sembol === updatedStock.sembol);
     if (portfolioItem) {
-        // Only re-render portfolio if we are ON the portfolio tab to save resources
+        updateTrailingStop(portfolioItem, updatedStock.fiyat, updatedStock);
+
         if (currentTab === 'portfolio') {
             renderPortfolio();
         } else {
-            // If not on portfolio tab, we still need to update calculations for next time
-            // (Already handled by updating specific item properties? No, renderPortfolio calculates from globalData mostly)
+            savePortfolio();
         }
     }
 
@@ -580,12 +629,12 @@ connection.on("ReceiveStockUpdate", (updatedStock) => {
             row.classList.add(flashClass);
             setTimeout(() => row.classList.remove(flashClass), 500);
 
-            // Update Cells directly (Performance)
+            // Update Cells
             updateCell(row, '.cell-fiyat', `${updatedStock.fiyat.toFixed(2)} ₺ ${getDiffBadge(updatedStock.fiyat, updatedStock.fiyatOnceki)}`);
             updateCell(row, '.cell-rsi', `${updatedStock.rsi.toFixed(2)} ${getDiffBadge(updatedStock.rsi, updatedStock.rsiOnceki)}`);
             updateCell(row, '.cell-score', updatedStock.score);
 
-            // Re-render score bar
+            // Update Score Bar
             const scoreBar = row.querySelector('.cell-score-bar');
             if (scoreBar) {
                 scoreBar.style.width = `${updatedStock.score}%`;
@@ -595,7 +644,6 @@ connection.on("ReceiveStockUpdate", (updatedStock) => {
             // Update Signal Badge
             const signalCell = row.querySelector('.cell-signal');
             if (signalCell) signalCell.innerHTML = getSignalBadge(updatedStock.signal);
-
         }
     }
 });
@@ -615,7 +663,7 @@ function getSignalBadge(signal) {
 }
 
 
-// Slider Değer Göstergesi
+// -- UI: Slider Value Display --
 document.addEventListener('DOMContentLoaded', () => {
     const slider = document.getElementById('minScoreSlider');
     const valueDisplay = document.getElementById('minScoreValue');
@@ -625,3 +673,106 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 });
+
+// -- Render: Pro Dashboard --
+function renderProTable(data) {
+    const tbody = document.getElementById('proTablosu');
+    if (!tbody) return;
+
+    tbody.innerHTML = '';
+
+    // Filter based on strategy dropdown
+    const filterEl = document.getElementById('proStrategyFilter');
+    const filterVal = filterEl ? filterEl.value : 'ALL';
+
+    let filteredData = data;
+    if (filterVal !== 'ALL') {
+        filteredData = data.filter(h => h.mainStrategy === filterVal);
+    }
+
+    applySort(filteredData);
+
+    if (filteredData.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="7" class="p-12 text-center text-gray-500">Seçilen kriterlere uygun hisse bulunamadı.</td></tr>';
+        return;
+    }
+
+    filteredData.forEach(h => {
+        const regime = h.marketRegime || 'SIDEWAYS';
+        const strategy = h.mainStrategy || 'NEUTRAL';
+        const tags = h.tags || [];
+        const confScore = h.confidenceScore || 0;
+
+        // Regime Icon
+        let regimeBadge = '';
+        if (regime === 'BULL') regimeBadge = '<span class="text-emerald-400 font-bold"><i class="fa-solid fa-bull-horn mr-1"></i> BULL</span>';
+        else if (regime === 'BEAR') regimeBadge = '<span class="text-red-400 font-bold"><i class="fa-solid fa-paw mr-1"></i> BEAR</span>';
+        else regimeBadge = '<span class="text-gray-400 font-bold"><i class="fa-solid fa-minus mr-1"></i> SIDEWAYS</span>';
+
+        // Strategy Label
+        let strategyBadge = '';
+        if (strategy === 'TREND') strategyBadge = '<span class="bg-blue-600/20 text-blue-300 px-2 py-1 rounded border border-blue-600/30 text-xs shadow-[0_0_10px_rgba(37,99,235,0.2)]">📈 Trend Follower</span>';
+        else if (strategy === 'BREAKOUT') strategyBadge = '<span class="bg-purple-600/20 text-purple-300 px-2 py-1 rounded border border-purple-600/30 text-xs shadow-[0_0_10px_rgba(147,51,234,0.2)]">🚀 Breakout</span>';
+        else if (strategy === 'REVERSAL') strategyBadge = '<span class="bg-emerald-600/20 text-emerald-300 px-2 py-1 rounded border border-emerald-600/30 text-xs shadow-[0_0_10px_rgba(16,185,129,0.2)]">🎣 Mean Reversion</span>';
+        else strategyBadge = '<span class="text-gray-600 text-xs">Waiting...</span>';
+
+        // Tags
+        let tagsHtml = '';
+        if (Array.isArray(tags)) {
+            tags.forEach(tag => {
+                let colorClass = 'bg-gray-800 text-gray-400 border-gray-700';
+                if (tag.includes('Bull') || tag.includes('Golden') || tag.includes('Smart')) colorClass = 'bg-yellow-500/10 text-yellow-500 border-yellow-500/30';
+                else if (tag.includes('Bear') || tag.includes('Knife')) colorClass = 'bg-red-500/10 text-red-500 border-red-500/30';
+                else if (tag.includes('Whale') || tag.includes('Squeeze')) colorClass = 'bg-indigo-500/10 text-indigo-400 border-indigo-500/30 animate-pulse';
+                else if (tag.includes('Oversold') || tag.includes('Support')) colorClass = 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30';
+
+                tagsHtml += `<span class="inline-block px-2 py-0.5 rounded text-[10px] mr-1 mb-1 border ${colorClass}">${tag}</span>`;
+            });
+        }
+
+        // Confidence Score Bar (Blue/Purple theme)
+        let barColor = 'bg-gray-600';
+        let barWidth = confScore + '%';
+        if (confScore >= 80) barColor = 'bg-purple-500 shadow-[0_0_15px_rgba(168,85,247,0.6)]';
+        else if (confScore >= 60) barColor = 'bg-blue-500';
+        else if (confScore >= 40) barColor = 'bg-blue-800';
+
+        const row = `
+        <tr class="hover:bg-gray-800/40 border-b border-gray-800/30 transition group">
+            <td class="p-4 font-bold text-white sticky left-0 bg-[#0b0f19] group-hover:bg-gray-800/40 z-10 border-r border-gray-800/50">
+                ${h.sembol}
+                <div class="text-[9px] font-mono text-gray-500 mt-0.5">${h.hacimOrani.toFixed(1)}x Vol</div>
+            </td>
+            
+            <td class="p-4 text-blue-300 font-mono text-base tracking-tight">
+                ${h.fiyat.toFixed(2)} ₺
+            </td>
+            
+            <td class="p-4 text-center">${regimeBadge}</td>
+            <td class="p-4 text-center">${strategyBadge}</td>
+            
+            <td class="p-4">
+                <div class="flex flex-wrap max-w-[250px]">
+                    ${tagsHtml}
+                </div>
+            </td>
+            
+            <td class="p-4 text-center">
+                 <div class="flex flex-col items-center group/tooltip relative">
+                    <span class="text-white font-mono font-bold text-sm mb-1">${confScore}</span>
+                    <div class="w-24 h-1.5 bg-gray-800 rounded-full overflow-hidden border border-gray-700">
+                        <div class="h-full ${barColor}" style="width: ${barWidth}"></div>
+                    </div>
+                </div>
+            </td>
+            
+            <td class="p-4 text-right">
+                <button onclick="openAddModal()" 
+                    class="bg-blue-600 hover:bg-blue-500 text-white p-2 rounded transition shadow-lg shadow-blue-900/40 text-xs">
+                    <i class="fa-solid fa-plus"></i>
+                </button>
+            </td>
+        </tr>`;
+        tbody.innerHTML += row;
+    });
+}

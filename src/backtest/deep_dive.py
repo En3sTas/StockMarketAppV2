@@ -1,7 +1,8 @@
+
 import pandas as pd
 import numpy as np
-
 import os
+
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 FILE_PATH = os.path.join(BASE_DIR, "data", "backtest_results.csv")
 
@@ -16,7 +17,7 @@ def run_deep_dive(results_file=FILE_PATH):
     print("       🚀 DEEP DIVE BACKTEST ANALYSIS        ")
     print("="*50)
 
-    # 1. ANALYSIS BY SIGNAL TYPE
+    # 1. Signal Type Analysis
     print("\n--- 1. ANALYSIS BY SIGNAL TYPE ---")
     signal_grp = df.groupby('signal').agg(
         Trades=('pnl', 'count'),
@@ -27,7 +28,7 @@ def run_deep_dive(results_file=FILE_PATH):
     
     print(signal_grp.round(2))
 
-    # 2. ANALYSIS BY SCORE BUCKET
+    # 2. Score Bucket Analysis
     print("\n--- 2. ANALYSIS BY SCORE BUCKET (Is Higher Better?) ---")
     bins = [60, 65, 70, 75, 80, 85, 101]
     labels = ['60-64', '65-69', '70-74', '75-79', '80-84', '85+']
@@ -41,7 +42,7 @@ def run_deep_dive(results_file=FILE_PATH):
     )
     print(score_grp.round(2))
 
-    # 3. EXIT REASON BREAKDOWN
+    # 3. Exit Reason Breakdown
     print("\n--- 3. EXIT REASON BREAKDOWN ---")
     exit_counts = df['exit_reason'].value_counts()
     exit_pct = df['exit_reason'].value_counts(normalize=True) * 100
@@ -49,7 +50,7 @@ def run_deep_dive(results_file=FILE_PATH):
     exit_df = pd.DataFrame({'Count': exit_counts, 'Percentage': exit_pct})
     print(exit_df.round(1))
 
-    # 4. PENALTY / QUALITY CHECK
+    # 4. Win/Loss Ratio Analysis
     print("\n--- 4. WIN VS LOSS ANALYSIS ---")
     wins = df[df['pnl'] > 0]
     losses = df[df['pnl'] <= 0]

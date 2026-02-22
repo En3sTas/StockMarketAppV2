@@ -1,37 +1,35 @@
+
 import pandas as pd
 import numpy as np
+import os
 
-# CONFIG
-INITIAL_CAPITAL = 30000       # Senin gerçek bütçen
-MAX_POSITIONS = 5             # 5 Hisse (Hisse başı 6.000 TL)
-COMMISSION = 0.001            # Binde 1 (Midas + Slippage Payı)
+# Simulation Parameters
+INITIAL_CAPITAL = 30000       
+MAX_POSITIONS = 5             
+COMMISSION = 0.001           
 
-def run_portfolio_simulation():
+# Path Configuration
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+RESULTS_FILE = os.path.join(BASE_DIR, "data", "backtest_results.csv")
+
+def run_portfolio_simulation(results_file=RESULTS_FILE):
     print(f"💰 Starting Portfolio Simulation (2007-2026)")
     print(f"🎯 Initial Capital: {INITIAL_CAPITAL:,.2f} TL")
     print(f"🧩 Max Positions: {MAX_POSITIONS}")
     print("-" * 40)
 
-import os
-
-# PATH RESOLUTION
-BASE_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-RESULTS_FILE = os.path.join(BASE_DIR, "data", "backtest_results.csv")
-
-def run_portfolio_simulation(results_file=RESULTS_FILE):
-    # ...
-    # 1. Load Trades
+    # 1. Load Trade Data
     try:
         df = pd.read_csv(results_file)
-    except:
-        print(f"❌ {results_file} not found!")
+    except Exception as e:
+        print(f"❌ {results_file} not found! Error: {e}")
         return
 
     # Convert dates
     df['entry_date'] = pd.to_datetime(df['entry_date'])
     df['exit_date'] = pd.to_datetime(df['exit_date'])
     
-    # 2. Create Event Timeline
+    # 2. Build Event Timeline (Entries & Exits)
     events = []
     
     for idx, row in df.iterrows():
@@ -52,11 +50,10 @@ def run_portfolio_simulation(results_file=RESULTS_FILE):
             'trade_id': idx
         })
     
-    # Sort events
     events_df = pd.DataFrame(events)
     events_df = events_df.sort_values(by=['date', 'type'], ascending=[True, False]) 
-
-    # 3. Simulation Loop
+    
+    # 3. Execution Loop
     dashboard = {
         'cash': INITIAL_CAPITAL,
         'equity': INITIAL_CAPITAL,
@@ -70,7 +67,7 @@ def run_portfolio_simulation(results_file=RESULTS_FILE):
     for _, event in events_df.iterrows():
         trade_id = event['trade_id']
         
-        # --- EXIT LOGIC ---
+        # Process Exits
         if event['type'] == 'EXIT':
             if trade_id in dashboard['active_positions']:
                 invested = dashboard['active_positions'][trade_id]
@@ -81,7 +78,7 @@ def run_portfolio_simulation(results_file=RESULTS_FILE):
                 del dashboard['active_positions'][trade_id]
                 current_positions -= 1
         
-        # --- ENTRY LOGIC ---
+        # Process Entries
         elif event['type'] == 'ENTRY':
             if current_positions < MAX_POSITIONS:
                 total_equity = dashboard['cash'] + sum(dashboard['active_positions'].values())
@@ -98,7 +95,7 @@ def run_portfolio_simulation(results_file=RESULTS_FILE):
             else:
                 dashboard['skipped_trades'] += 1
 
-    # 4. Final Results
+    # 4. Reporting
     final_equity = dashboard['cash'] + sum(dashboard['active_positions'].values())
     total_years = (events_df['date'].max() - events_df['date'].min()).days / 365.25
     cagr = (final_equity / INITIAL_CAPITAL) ** (1 / total_years) - 1

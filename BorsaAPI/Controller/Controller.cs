@@ -1,3 +1,4 @@
+
 using Microsoft.AspNetCore.Mvc;
 using BorsaAPI.Models;
 using BorsaAPI.Services;
@@ -35,24 +36,21 @@ namespace BorsaAPI.Controllers
         }
 
         [HttpGet("/api/market/trend")]
-        public IActionResult GetTrend()
+        public IActionResult GetTrend([FromQuery] HisselerFilterDto filter)
         {
-            // Business logic moved to Service
-            return Ok(_hisseService.GetTrendStocks());
+            return Ok(_hisseService.GetTrendStocksWithFilters(filter));
         }
 
         [HttpGet("/api/market/scout")]
-        public IActionResult GetScout()
+        public IActionResult GetScout([FromQuery] HisselerFilterDto filter)
         {
-             // Business logic moved to Service
-            return Ok(_hisseService.GetScoutStocks());
+            return Ok(_hisseService.GetScoutStocksWithFilters(filter));
         }
 
         [HttpGet("/api/market/all")]
-        public IActionResult GetAllStocks()
+        public IActionResult GetAllStocks([FromQuery] HisselerFilterDto filter)
         {
-             // Business logic moved to Service
-            return Ok(_hisseService.GetAllStocks());
+            return Ok(_hisseService.GetAllStocksWithFilters(filter));
         }
 
         [HttpPost("/api/market/notify")]
@@ -60,7 +58,7 @@ namespace BorsaAPI.Controllers
         {
             if (hisse == null) return BadRequest("Invalid Data");
 
-            // Broadcast to all connected clients
+            // Real-time Update via SignalR
             await _hubContext.Clients.All.SendAsync("ReceiveStockUpdate", hisse);
 
             return Ok(new { status = "Broadcasted", symbol = hisse.Sembol });

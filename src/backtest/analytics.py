@@ -6,6 +6,9 @@ BASE_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__fil
 RESULTS_FILE = os.path.join(BASE_DIR, "data", "backtest_results.csv")
 
 def calculate_metrics(df):
+    """
+    Calculates key performance indicators for a set of trades.
+    """
     if df.empty:
         return {}
     
@@ -17,12 +20,12 @@ def calculate_metrics(df):
     avg_win = wins['pnl'].mean() * 100 if not wins.empty else 0
     avg_loss = losses['pnl'].mean() * 100 if not losses.empty else 0
     
-    # Expectancy formula: (Win% * AvgWin) - (Loss% * AvgLoss) -> Used ABS for Loss
+    # Expectancy: (Win% * AvgWin) - (Loss% * AvgLoss)
     expectancy = (win_rate/100 * avg_win) - ((1 - win_rate/100) * abs(avg_loss))
     
     profit_factor = abs(wins['pnl'].sum() / losses['pnl'].sum()) if not losses.empty and losses['pnl'].sum() != 0 else 999
     
-    # Max Drawdown (simplified - per trade worst loss, ideally equity curve)
+    # Max Drawdown (per trade)
     max_dd = df['pnl'].min() * 100
     
     avg_hold = df['days_held'].mean()
@@ -43,6 +46,9 @@ def print_metrics(title, metrics):
         print(f"{k.ljust(20)}: {v}")
 
 def run_analytics(file_path=RESULTS_FILE):
+    """
+    Loads backtest results and prints a comprehensive analysis.
+    """
     print("📊 Loading Backtest Results...")
     try:
         df = pd.read_csv(file_path)
@@ -50,11 +56,11 @@ def run_analytics(file_path=RESULTS_FILE):
         print(f"❌ Could not load results: {e}")
         return
 
-    # 1. Overall Performance
+    # 1. Overall Performance Statistics
     total_metrics = calculate_metrics(df)
     print_metrics("OVERALL PERFORMANCE", total_metrics)
     
-    # 2. Score Bucket Analysis
+    # 2. Score Bucket Analysis (Higher Score vs Performance)
     print("\n--- SCORE VALIDATION (Does Higher Score = Better Result?) ---")
     bins = [55, 65, 75, 85, 101]
     labels = ['55-64', '65-74', '75-84', '85+']
@@ -64,8 +70,7 @@ def run_analytics(file_path=RESULTS_FILE):
     bucket_grp.columns = ['Trades', 'Avg Return', 'Win Rate']
     print(bucket_grp)
     
-    # 3. Penalty Analysis (Did low scores fail more?)
-    # We use Score < 60 as proxy for 'Penalized' in restricted engine info
+    # 3. Penalty Analysis (Low Score Performance)
     print("\n--- PENALTY VALIDATION ---")
     penalized = df[df['score'] < 60]
     clean = df[df['score'] >= 60]

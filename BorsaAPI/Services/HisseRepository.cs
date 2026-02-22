@@ -1,3 +1,4 @@
+
 using BorsaAPI.Models;
 using Npgsql;
 using System.Text;
@@ -175,7 +176,7 @@ namespace BorsaAPI.Services
                         hisse.HacimOrani = reader.IsDBNull(reader.GetOrdinal("hacim_orani")) ? 0 : reader.GetDecimal(reader.GetOrdinal("hacim_orani"));
                         hisse.SonGuncelleme = reader.GetDateTime(reader.GetOrdinal("son_guncelleme"));
 
-                        // Yeni Eklenen Sütunlar
+                        // Expanded Fields
                         hisse.Signal = reader.IsDBNull(reader.GetOrdinal("signal")) ? "NO_TRADE" : reader.GetString(reader.GetOrdinal("signal"));
                         hisse.Score = reader.IsDBNull(reader.GetOrdinal("score")) ? 0 : reader.GetInt32(reader.GetOrdinal("score"));
                         hisse.StopPrice = reader.IsDBNull(reader.GetOrdinal("stop_price")) ? 0 : reader.GetDecimal(reader.GetOrdinal("stop_price"));
@@ -183,6 +184,16 @@ namespace BorsaAPI.Services
                         hisse.MacdHistOnceki = reader.IsDBNull(reader.GetOrdinal("macd_hist_onceki")) ? 0 : reader.GetDecimal(reader.GetOrdinal("macd_hist_onceki"));
                         hisse.HacimOnceki = reader.IsDBNull(reader.GetOrdinal("hacim_onceki")) ? 0 : reader.GetDecimal(reader.GetOrdinal("hacim_onceki"));
                         hisse.Strategy = reader.IsDBNull(reader.GetOrdinal("strategy")) ? "NONE" : reader.GetString(reader.GetOrdinal("strategy"));
+
+                        // Pro Engine Fields
+                        hisse.MainStrategy = reader.IsDBNull(reader.GetOrdinal("main_strategy")) ? "NEUTRAL" : reader.GetString(reader.GetOrdinal("main_strategy"));
+                        hisse.MarketRegime = reader.IsDBNull(reader.GetOrdinal("market_regime")) ? "SIDEWAYS" : reader.GetString(reader.GetOrdinal("market_regime"));
+                        hisse.ConfidenceScore = reader.IsDBNull(reader.GetOrdinal("confidence_score")) ? 0 : reader.GetInt32(reader.GetOrdinal("confidence_score"));
+                        
+                        if (!reader.IsDBNull(reader.GetOrdinal("tags")))
+                        {
+                            hisse.Tags = reader.GetFieldValue<string[]>(reader.GetOrdinal("tags"));
+                        }
 
                         hisseListesi.Add(hisse);
                     }
@@ -202,11 +213,13 @@ namespace BorsaAPI.Services
                         sembol, fiyat, sma_50, sma_200, fk, pd_dd, rsi, macd_line, macd_signal, macd_hist, adx, dmp, dmn, hacim_orani, 
                         signal, score, stop_price, target_price, macd_hist_onceki, hacim_onceki,
                         fiyat_onceki, rsi_onceki, adx_onceki, atr,
-                        son_guncelleme, strategy
+                        son_guncelleme, strategy,
+                        tags, main_strategy, market_regime, confidence_score
                     )
                     VALUES (@sembol, @fiyat, @sma50, @sma200, @fk, @pd_dd, @rsi, @macd_line, @macd_signal, @macd_hist, @adx, @dmp, @dmn, @hacim_orani, 
                         @signal, @score, @stop_price, @target_price, @macd_hist_onceki, @hacim_onceki,
-                        @fiyat_onceki, @rsi_onceki, @adx_onceki, @atr, NOW(), @strategy)
+                        @fiyat_onceki, @rsi_onceki, @adx_onceki, @atr, NOW(), @strategy,
+                        @tags, @main_strategy, @market_regime, @confidence_score)
                     ON CONFLICT (sembol) 
                     DO UPDATE SET 
                         fiyat = EXCLUDED.fiyat,
@@ -236,7 +249,12 @@ namespace BorsaAPI.Services
                         atr = EXCLUDED.atr,
                         
                         son_guncelleme = EXCLUDED.son_guncelleme,
-                        strategy = EXCLUDED.strategy;";
+                        strategy = EXCLUDED.strategy,
+
+                        tags = EXCLUDED.tags,
+                        main_strategy = EXCLUDED.main_strategy,
+                        market_regime = EXCLUDED.market_regime,
+                        confidence_score = EXCLUDED.confidence_score;";
 
                 using (NpgsqlCommand cmd = new NpgsqlCommand(sql, conn))
                 {
@@ -267,6 +285,12 @@ namespace BorsaAPI.Services
                     cmd.Parameters.AddWithValue("@adx_onceki", hisse.AdxOnceki);
                     cmd.Parameters.AddWithValue("@atr", hisse.Atr);
                     cmd.Parameters.AddWithValue("@strategy", hisse.Strategy);
+
+                    // Pro Engine Params
+                    cmd.Parameters.AddWithValue("@tags", (object)hisse.Tags ?? DBNull.Value);
+                    cmd.Parameters.AddWithValue("@main_strategy", hisse.MainStrategy);
+                    cmd.Parameters.AddWithValue("@market_regime", hisse.MarketRegime);
+                    cmd.Parameters.AddWithValue("@confidence_score", hisse.ConfidenceScore);
 
                     cmd.ExecuteNonQuery();
                 }

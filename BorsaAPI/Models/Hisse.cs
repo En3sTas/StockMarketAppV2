@@ -1,3 +1,4 @@
+
 namespace BorsaAPI.Models
 {
     public class Hisse
@@ -29,5 +30,11 @@ namespace BorsaAPI.Models
         public decimal HacimOnceki { get; set; }
         public decimal Atr { get; set; }
         public string Strategy { get; set; } = "NONE";
+        
+        // Extended Fields (Pro Engine)
+        public string[] Tags { get; set; } = Array.Empty<string>();
+        public string MainStrategy { get; set; } = "NEUTRAL";
+        public string MarketRegime { get; set; } = "SIDEWAYS";
+        public int ConfidenceScore { get; set; } = 0;
     }
 }
