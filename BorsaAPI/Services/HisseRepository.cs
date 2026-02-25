@@ -195,6 +195,10 @@ namespace BorsaAPI.Services
                             hisse.Tags = reader.GetFieldValue<string[]>(reader.GetOrdinal("tags"));
                         }
 
+                        // Unified Conviction Engine Fields
+                        hisse.UnifiedScore = reader.IsDBNull(reader.GetOrdinal("unified_score")) ? 0 : reader.GetInt32(reader.GetOrdinal("unified_score"));
+                        hisse.Conviction = reader.IsDBNull(reader.GetOrdinal("conviction")) ? "BRONZE" : reader.GetString(reader.GetOrdinal("conviction"));
+
                         hisseListesi.Add(hisse);
                     }
                 }
@@ -214,12 +218,14 @@ namespace BorsaAPI.Services
                         signal, score, stop_price, target_price, macd_hist_onceki, hacim_onceki,
                         fiyat_onceki, rsi_onceki, adx_onceki, atr,
                         son_guncelleme, strategy,
-                        tags, main_strategy, market_regime, confidence_score
+                        tags, main_strategy, market_regime, confidence_score,
+                        unified_score, conviction
                     )
                     VALUES (@sembol, @fiyat, @sma50, @sma200, @fk, @pd_dd, @rsi, @macd_line, @macd_signal, @macd_hist, @adx, @dmp, @dmn, @hacim_orani, 
                         @signal, @score, @stop_price, @target_price, @macd_hist_onceki, @hacim_onceki,
                         @fiyat_onceki, @rsi_onceki, @adx_onceki, @atr, NOW(), @strategy,
-                        @tags, @main_strategy, @market_regime, @confidence_score)
+                        @tags, @main_strategy, @market_regime, @confidence_score,
+                        @unified_score, @conviction)
                     ON CONFLICT (sembol) 
                     DO UPDATE SET 
                         fiyat = EXCLUDED.fiyat,
@@ -254,7 +260,10 @@ namespace BorsaAPI.Services
                         tags = EXCLUDED.tags,
                         main_strategy = EXCLUDED.main_strategy,
                         market_regime = EXCLUDED.market_regime,
-                        confidence_score = EXCLUDED.confidence_score;";
+                        confidence_score = EXCLUDED.confidence_score,
+
+                        unified_score = EXCLUDED.unified_score,
+                        conviction = EXCLUDED.conviction;";
 
                 using (NpgsqlCommand cmd = new NpgsqlCommand(sql, conn))
                 {
@@ -291,6 +300,10 @@ namespace BorsaAPI.Services
                     cmd.Parameters.AddWithValue("@main_strategy", hisse.MainStrategy);
                     cmd.Parameters.AddWithValue("@market_regime", hisse.MarketRegime);
                     cmd.Parameters.AddWithValue("@confidence_score", hisse.ConfidenceScore);
+
+                    // Unified Conviction Engine Params
+                    cmd.Parameters.AddWithValue("@unified_score", hisse.UnifiedScore);
+                    cmd.Parameters.AddWithValue("@conviction", hisse.Conviction);
 
                     cmd.ExecuteNonQuery();
                 }

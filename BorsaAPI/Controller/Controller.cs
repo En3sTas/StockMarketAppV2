@@ -41,11 +41,7 @@ namespace BorsaAPI.Controllers
             return Ok(_hisseService.GetTrendStocksWithFilters(filter));
         }
 
-        [HttpGet("/api/market/scout")]
-        public IActionResult GetScout([FromQuery] HisselerFilterDto filter)
-        {
-            return Ok(_hisseService.GetScoutStocksWithFilters(filter));
-        }
+
 
         [HttpGet("/api/market/all")]
         public IActionResult GetAllStocks([FromQuery] HisselerFilterDto filter)

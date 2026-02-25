@@ -85,34 +85,16 @@ def get_market_regime(index_df):
 
 def evaluate_stock(df, index_df=None):
     """
-    Institutional Grade Analysis
+    Institutional Grade Analysis - Advanced Scoring Engine V4
+    Max Score: 100 | Base Score: 50
     """
     if df is None or len(df) < 200:
         return None
         
     current = df.iloc[-1]
+    prev = df.iloc[-2]
     
-    # Determine Market Regime
-    regime, regime_multiplier = get_market_regime(index_df)
-    
-    # Calculate moving averages
-    ema20 = calculate_ema(df['Close'], 20).iloc[-1]
-    ema50 = calculate_ema(df['Close'], 50).iloc[-1]
-    ema100 = calculate_ema(df['Close'], 100).iloc[-1]
-    ema200 = calculate_ema(df['Close'], 200).iloc[-1]
-    
-    # Calculate MFI (once, reuse series later)
-    mfi_series = calculate_mfi(df['High'], df['Low'], df['Close'], df['Volume'])
-    mfi = mfi_series.iloc[-1]
-    
-    # Calculate Bollinger Bands
-    bb_width, bb_upper, bb_lower = calculate_bollinger_width(df['Close'])
-    bb_width = bb_width.iloc[-1]
-    
-    # Calculate Pivots
-    pivot, r1, s1, s2 = calculate_pivots(df['High'], df['Low'], df['Close'])
-    pivot = pivot.iloc[-1]
-    s2 = s2.iloc[-1]
+    # --- 1. VERİ HAZIRLIĞI & İNDİKATÖRLER ---
     
     # Helper to retrieve values safely
     def get_val(row, candidates, default):
@@ -121,112 +103,171 @@ def evaluate_stock(df, index_df=None):
                 return row[key]
         return default
 
-    # Retrieve ADX and RSI
-    adx = get_val(current, ['ADX_14', 'adx_14', 'ADX', 'adx'], 0)
-    rsi = get_val(current, ['RSI_14', 'rsi_14', 'RSI', 'rsi'], 50) 
-    
-    # Initialize Scoring
-    tags = []
-    main_strategy = "NEUTRAL"
-    score = 0 
-    
+    # Fiyat ve Değişimler
     price = current['Close']
+    close_prev = prev['Close']
     
-    # Strategy: Trend Following
-    is_trend = False
-    if price > ema20 and ema20 > ema50:
-        is_trend = True
-        if adx > 25:
-            # Fix 5: Check if ADX is declining (trend losing energy)
-            adx_prev = get_val(df.iloc[-2], ['ADX_14', 'adx_14', 'ADX', 'adx'], 0)
-            if adx_prev > adx:  # ADX falling
-                tags.append("Tiring Trend")
-                score += 5
-            else:
-                tags.append("Strong Trend")
-                score += 15
-            main_strategy = "TREND"
-        else:
-            tags.append("Weak Trend")
-            score += 5
-            
-    if ema50 > ema200: 
-        tags.append("Long-Term Bull")
-        score += 10 
-        
-    # Strategy: VWMA Check
+    # Piyasa Rejimi (XU100)
+    regime, regime_multiplier = get_market_regime(index_df) # BULL, BEAR, SIDEWAYS
+    
+    # Hareketli Ortalamalar
+    ema20 = calculate_ema(df['Close'], 20).iloc[-1]
+    ema50 = calculate_ema(df['Close'], 50).iloc[-1]
+    ema200 = calculate_ema(df['Close'], 200).iloc[-1]
     vwma20 = calculate_vwma(df['Close'], df['Volume'], 20).iloc[-1]
     
+    # İndikatörler
+    adx = get_val(current, ['ADX_14', 'adx_14', 'ADX', 'adx'], 0)
+    adx_prev = get_val(prev, ['ADX_14', 'adx_14', 'ADX', 'adx'], 0)
+    
+    rsi = get_val(current, ['RSI_14', 'rsi_14', 'RSI', 'rsi'], 50)
+    rsi_prev = get_val(prev, ['RSI_14', 'rsi_14', 'RSI', 'rsi'], 50)
+    
+    mfi_series = calculate_mfi(df['High'], df['Low'], df['Close'], df['Volume'])
+    mfi = mfi_series.iloc[-1]
+    
+    # Pivotlar & Bollinger
+    pivot, r1, s1, s2 = calculate_pivots(df['High'], df['Low'], df['Close'])
+    pivot, s2 = pivot.iloc[-1], s2.iloc[-1]
+    
+    bb_width, bb_upper, bb_lower = calculate_bollinger_width(df['Close'])
+    bb_width = bb_width.iloc[-1]
+
+    # --- 2. PUANLAMA MOTORU BAŞLANGICI ---
+    
+    tags = []
+    main_strategy = "NEUTRAL"
+    score = 50  # BASE SCORE (Nötr Başlangıç)
+
+    # --- A) CRASH SHIELD (Çöküş Kalkanı) - ÖNCELİKLİ KONTROL ---
+    # Eğer hisse çakılıyorsa analiz yapma, puanı ez ve çık.
+    
+    daily_change = (price - close_prev) / close_prev
+    try:
+        price_3d_ago = df['Close'].iloc[-4]
+        three_day_change = (price - price_3d_ago) / price_3d_ago
+    except:
+        three_day_change = 0
+
+    is_crashing = False
+    if daily_change < -0.035 or three_day_change < -0.05:
+        is_crashing = True
+        tags.append("Correction ⚠️")
+        score = 20 # Direkt düşük puan
+        # Crash varsa diğer puanları hesaplama, sadece riskleri ekle
+        if regime == "BEAR":
+            tags.append("Bear Regime Risk")
+            score -= 10
+        return {
+            "score": int(score),
+            "main_strategy": "NEUTRAL",
+            "market_regime": regime,
+            "tags": tags,
+            "confidence_score": int(score)
+        }
+
+    # --- B) TREND ANALİZİ (Max +30 Puan) ---
+    is_trend = False
+    
+    # 1. Kısa Vadeli Trend (EMA20 > EMA50)
+    if price > ema20 and ema20 > ema50:
+        is_trend = True
+        tags.append("Strong Trend")
+        score += 10
+    elif price > ema50: # Trend zayıf ama bozulmamış
+        tags.append("Weak Trend")
+        score += 5
+        
+    # 2. Uzun Vadeli Trend (Golden Zone)
+    if ema50 > ema200:
+        tags.append("Long-Term Bull")
+        score += 10
+        
+    # 3. Trend Gücü (ADX)
+    if adx > 25:
+        if adx > adx_prev: # ADX Artıyor
+            # Trend puanına ekleme yapmıyoruz, zaten Strong Trend aldı.
+            # Ama stratejiyi belirliyoruz.
+            if main_strategy == "NEUTRAL": main_strategy = "TREND"
+        else: # ADX Düşüyor (Yorgunluk)
+            tags.append("Tiring Trend")
+            score -= 5 # Trend olsa bile yorulduğu için ceza
+
+    # --- C) HACİM & YAKIT (Max +20 Puan) ---
+    
+    # 1. VWMA Kontrolü
     if price > vwma20:
         tags.append("Above VWMA")
-        score += 10 
-    
-    # Fix 3: True Volume Divergence — price making highs but volume/MFI declining
-    high_5 = df['Close'].rolling(5).max()
-    if len(high_5) >= 2:
-        price_making_highs = current['Close'] >= high_5.iloc[-2]
-        vol_declining = current['Volume'] < df['Volume'].rolling(5).mean().iloc[-2]
-        mfi_declining = mfi_series.iloc[-1] < mfi_series.iloc[-2]
-        if price_making_highs and (vol_declining or mfi_declining):
-            tags.append("Vol Divergence")
-            score -= 5
-    
-    # Fix 1: Whale Volume — check candle color
-    avg_vol = df['Volume'].rolling(20).mean().iloc[-1]
-    if current['Volume'] > avg_vol * 2.0:
-        if current['Close'] > current['Open']:  # Green candle
-            tags.append("Whale Volume")
-            score += 10
-        else:  # Red candle — high sell volume
-            tags.append("High Sell Vol")
-            score -= 10
-        if main_strategy == "NEUTRAL": main_strategy = "BREAKOUT"
+        score += 5
         
-    if bb_width < 0.10:
-        tags.append("BB Squeeze")
-        score += 10 
-    
+    # 2. Akıllı Para (MFI)
     if mfi > 60:
         tags.append("Smart Money In")
-        score += 5 
-    
-    # Fix 4: Overbought warning tags
-    if rsi > 75:
-        tags.append("Overbought")  # Warning only, no score change
-    
-    if mfi > 80:
-        tags.append("MFI Overbought")  # Smart money saturated, selling may come
-        
-    # Fix 2: Mean Reversion / Reversal — RSI Hook AND Support required
-    rsi_prev = calculate_rsi(df['Close']).iloc[-2]
-    rsi_hooked = rsi < 30 and rsi > rsi_prev  # RSI turning upward
-    near_support = price < s2  # Below Pivot S2
-    
-    if rsi_hooked and near_support:  # Both conditions required
-        if regime != "BEAR": 
-            tags.append("Oversold")
-            tags.append("Support Area")
-            main_strategy = "REVERSAL"
-            score += 15 
-            
-            if is_trend:
-                tags.append("Trend Pullback")
-                score += 5 
-        else:
-            tags.append("Falling Knife")
-            score -= 20
-    elif rsi_hooked:  # RSI hook alone — weaker signal
-        tags.append("RSI Reversal")
         score += 5
-    elif near_support and regime == "BEAR":
-        tags.append("Falling Knife")
-        score -= 20
-            
-    # Apply Market Regime Penalty
-    if regime == "BEAR":
-        score = score * 0.6 
-        tags.append("Bear Regime Risk")
         
+    # 3. Balina Hacmi (RENK KONTROLLÜ)
+    avg_vol = df['Volume'].rolling(20).mean().iloc[-1]
+    if current['Volume'] > avg_vol * 2.0:
+        if price > current['Open']: # Yeşil Mum
+            tags.append("Whale Volume")
+            score += 10
+            if main_strategy == "NEUTRAL": main_strategy = "BREAKOUT"
+        else: # Kırmızı Mum (Dökme)
+            tags.append("High Sell Vol")
+            score -= 15 # Ciddi ceza
+
+    # --- D) SETUP / TETİKLEYİCİLER (Max +25 Puan) ---
+    
+    # Senaryo 1: DİP DÖNÜŞÜ (Reversal)
+    rsi_hook = rsi < 35 and rsi > rsi_prev # RSI 35 altı ve dönüyor
+    near_support = price < s2 * 1.02 # Destek bölgesinde (+%2 tolerans)
+    
+    if rsi_hook and near_support:
+        tags.append("Oversold Hook 🎣")
+        tags.append("Support Area")
+        score += 20 # Altın vuruş puanı
+        main_strategy = "REVERSAL"
+        if is_trend: 
+            tags.append("Trend Pullback") # Trend içi düzeltme (En değerlisi)
+            score += 5 
+            
+    # Senaryo 2: PATLAMA (Breakout)
+    elif bb_width < 0.10:
+        tags.append("BB Squeeze")
+        score += 10
+        if price > calculate_bollinger_width(df['Close'])[1].iloc[-1]: # Üst bandı kırdıysa
+            tags.append("Bollinger Breakout")
+            score += 10
+            main_strategy = "BREAKOUT"
+
+    # --- E) RİSK & CEZALAR ---
+    
+    # 1. Uyumsuzluk (Divergence)
+    # Fiyat tepeleri yükselirken Hacim veya MFI düşüyorsa
+    high_5 = df['Close'].rolling(5).max()
+    if len(high_5) > 5:
+        making_new_highs = price >= high_5.iloc[-2]
+        vol_dropping = current['Volume'] < avg_vol
+        if making_new_highs and vol_dropping:
+            tags.append("Vol Divergence")
+            score -= 10
+
+    # 2. Aşırı Isınma (Kâr Alma Sinyali)
+    if rsi > 75:
+        tags.append("Overbought ⚠️")
+        score -= 5 # Alım için riskli bölge
+        
+    if mfi > 85:
+        tags.append("MFI Overbought")
+        
+    # 3. Piyasa Rejimi Cezası
+    if regime == "BEAR":
+        tags.append("Bear Regime Risk")
+        score -= 15 # Sabit ceza (Çarpan yerine)
+        
+    # --- F) FİNAL KONTROLLER ---
+    
+    # Skor Limitleme (Clamp)
     score = max(0, min(100, int(score)))
     
     return {
@@ -234,7 +275,7 @@ def evaluate_stock(df, index_df=None):
         "main_strategy": main_strategy,
         "market_regime": regime,
         "tags": tags,
-        "confidence_score": score 
+        "confidence_score": score
     }
 
 

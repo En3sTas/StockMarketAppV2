@@ -36,5 +36,9 @@ namespace BorsaAPI.Models
         public string MainStrategy { get; set; } = "NEUTRAL";
         public string MarketRegime { get; set; } = "SIDEWAYS";
         public int ConfidenceScore { get; set; } = 0;
+
+        // Unified Conviction Engine
+        public int UnifiedScore { get; set; } = 0;
+        public string Conviction { get; set; } = "BRONZE";
     }
 }

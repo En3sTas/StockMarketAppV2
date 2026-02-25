@@ -97,7 +97,6 @@ function switchTab(tabName) {
 
     // Tab Buttons
     const tabTrend = document.getElementById('tab-trend');
-    const tabScout = document.getElementById('tab-scout');
     const tabAll = document.getElementById('tab-all');
     const tabPro = document.getElementById('tab-pro');
     const tabPortfolio = document.getElementById('tab-portfolio');
@@ -106,33 +105,30 @@ function switchTab(tabName) {
     const activeClass = "tab-active px-6 py-2 rounded-md text-sm font-bold transition flex items-center gap-2";
     const passiveClass = "tab-passive px-6 py-2 rounded-md text-sm font-bold transition flex items-center gap-2 opacity-70 hover:opacity-100";
 
-    tabTrend.className = passiveClass + " hover:text-emerald-400";
-    tabScout.className = passiveClass + " hover:text-orange-400";
-    tabAll.className = passiveClass + " hover:text-gray-400";
-    tabPro.className = passiveClass + " hover:text-purple-400";
-    tabPortfolio.className = passiveClass;
+    if (tabTrend) tabTrend.className = passiveClass + " hover:text-emerald-400";
+    if (tabAll) tabAll.className = passiveClass + " hover:text-gray-400";
+    if (tabPro) tabPro.className = passiveClass + " hover:text-purple-400";
+    if (tabPortfolio) tabPortfolio.className = passiveClass;
 
     // Reset Views
-    marketView.classList.add('hidden');
-    portfolioView.classList.add('hidden');
+    if (marketView) marketView.classList.add('hidden');
+    if (portfolioView) portfolioView.classList.add('hidden');
     if (proView) proView.classList.add('hidden');
 
     if (tabName === 'portfolio') {
-        portfolioView.classList.remove('hidden');
-        tabPortfolio.className = activeClass;
+        if (portfolioView) portfolioView.classList.remove('hidden');
+        if (tabPortfolio) tabPortfolio.className = activeClass;
         verileriGetir();
     } else if (tabName === 'pro') {
         if (proView) proView.classList.remove('hidden');
-        tabPro.className = activeClass + " text-purple-400";
+        if (tabPro) tabPro.className = activeClass + " text-amber-400";
         verileriGetir();
     } else {
-        marketView.classList.remove('hidden');
+        if (marketView) marketView.classList.remove('hidden');
 
-        if (tabName === 'trend') {
+        if (tabName === 'trend' && tabTrend) {
             tabTrend.className = activeClass + " text-emerald-400";
-        } else if (tabName === 'scout') {
-            tabScout.className = activeClass + " text-orange-400";
-        } else if (tabName === 'all') {
+        } else if (tabName === 'all' && tabAll) {
             tabAll.className = activeClass + " text-gray-200";
         }
         verileriGetir();
@@ -161,8 +157,6 @@ async function verileriGetir() {
         let url = API_BASE_URL;
         if (currentTab === 'trend') {
             url = "http://localhost:5158/api/market/trend";
-        } else if (currentTab === 'scout') {
-            url = "http://localhost:5158/api/market/scout";
         } else if (currentTab === 'all' || currentTab === 'pro') {
             url = "http://localhost:5158/api/market/all";
         }
@@ -516,32 +510,22 @@ function calculateSmartLevels(cost, liveData) {
         const atr = liveData.atr;
         strategy = (liveData.strategy || "TREND").toUpperCase();
 
-        if (strategy === "SCOUT") {
-            // -- SCOUT Strategy --
-            // Stop: 2.0 ATR (Tighter stop)
-            stop = cost - (2.0 * atr);
+        // -- TREND Strategy --
+        // Stop: 3.0 ATR
+        stop = cost - (3.0 * atr);
 
-            // Target: Risk * 3.0
-            const risk = cost - stop;
-            target = cost + (risk * 3.0);
-        } else {
-            // -- TREND Strategy (Default) --
-            // Stop: 3.0 ATR
-            stop = cost - (3.0 * atr);
+        // Target: Dynamic Risk/Reward
+        let multiplier = 4.0;
 
-            // Target: Dynamic Risk/Reward
-            let multiplier = 4.0;
+        if (liveData.adx > 30) multiplier += 2.0;
+        else if (liveData.adx > 25) multiplier += 1.0;
 
-            if (liveData.adx > 30) multiplier += 2.0;
-            else if (liveData.adx > 25) multiplier += 1.0;
+        if (liveData.rsi > 75) multiplier -= 2.0;
+        else if (liveData.rsi > 70) multiplier -= 1.0;
 
-            if (liveData.rsi > 75) multiplier -= 2.0;
-            else if (liveData.rsi > 70) multiplier -= 1.0;
+        if (multiplier < 2.0) multiplier = 2.0;
 
-            if (multiplier < 2.0) multiplier = 2.0;
-
-            target = cost + (multiplier * atr);
-        }
+        target = cost + (multiplier * atr);
     }
     return {
         target: parseFloat(target.toFixed(2)),
@@ -564,10 +548,7 @@ function updateTrailingStop(portfolioItem, currentPrice, liveData) {
     const strategy = portfolioItem.strategy || "TREND";
     const atr = liveData.atr;
 
-    let atrMultiplier = 3.0; // TREND default
-    if (strategy === "SCOUT") {
-        atrMultiplier = 2.0;
-    }
+    let atrMultiplier = 3.0; // TREND
 
     // Update highest price seen
     if (currentPrice > portfolioItem.highestPrice) {
@@ -674,105 +655,183 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 });
 
-// -- Render: Pro Dashboard --
-function renderProTable(data) {
-    const tbody = document.getElementById('proTablosu');
-    if (!tbody) return;
 
-    tbody.innerHTML = '';
+// ─────────────────────────────────────────────────────────
+// SMART PICKS — Unified Conviction Engine Renderer
+// ─────────────────────────────────────────────────────────
 
-    // Filter based on strategy dropdown
-    const filterEl = document.getElementById('proStrategyFilter');
-    const filterVal = filterEl ? filterEl.value : 'ALL';
+const DANGER_TAGS_FE = ["Falling Knife", "High Sell Vol", "Bear Regime Risk"];
+const POSITIVE_TAGS_FE = ["Strong Trend", "Whale Volume", "Smart Money In", "Above VWMA", "BB Squeeze", "Long-Term Bull"];
+const WARNING_TAGS_FE = ["Overbought", "MFI Overbought", "Vol Divergence", "Tiring Trend", "RSI Reversal", "Weak Trend"];
 
-    let filteredData = data;
-    if (filterVal !== 'ALL') {
-        filteredData = data.filter(h => h.mainStrategy === filterVal);
-    }
+function getTagHtml(tag) {
+    const isDanger = DANGER_TAGS_FE.some(d => tag.includes(d));
+    const isPositive = POSITIVE_TAGS_FE.some(p => tag.includes(p));
+    const isWarning = WARNING_TAGS_FE.some(w => tag.includes(w));
 
-    applySort(filteredData);
+    let cls = 'bg-gray-800 text-gray-400 border-gray-700';
+    if (isDanger) cls = 'bg-red-500/15 text-red-400 border-red-500/40 font-bold';
+    else if (isPositive) cls = 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30';
+    else if (isWarning) cls = 'bg-yellow-500/10 text-yellow-400 border-yellow-500/30';
 
-    if (filteredData.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="7" class="p-12 text-center text-gray-500">Seçilen kriterlere uygun hisse bulunamadı.</td></tr>';
-        return;
-    }
-
-    filteredData.forEach(h => {
-        const regime = h.marketRegime || 'SIDEWAYS';
-        const strategy = h.mainStrategy || 'NEUTRAL';
-        const tags = h.tags || [];
-        const confScore = h.confidenceScore || 0;
-
-        // Regime Icon
-        let regimeBadge = '';
-        if (regime === 'BULL') regimeBadge = '<span class="text-emerald-400 font-bold"><i class="fa-solid fa-bull-horn mr-1"></i> BULL</span>';
-        else if (regime === 'BEAR') regimeBadge = '<span class="text-red-400 font-bold"><i class="fa-solid fa-paw mr-1"></i> BEAR</span>';
-        else regimeBadge = '<span class="text-gray-400 font-bold"><i class="fa-solid fa-minus mr-1"></i> SIDEWAYS</span>';
-
-        // Strategy Label
-        let strategyBadge = '';
-        if (strategy === 'TREND') strategyBadge = '<span class="bg-blue-600/20 text-blue-300 px-2 py-1 rounded border border-blue-600/30 text-xs shadow-[0_0_10px_rgba(37,99,235,0.2)]">📈 Trend Follower</span>';
-        else if (strategy === 'BREAKOUT') strategyBadge = '<span class="bg-purple-600/20 text-purple-300 px-2 py-1 rounded border border-purple-600/30 text-xs shadow-[0_0_10px_rgba(147,51,234,0.2)]">🚀 Breakout</span>';
-        else if (strategy === 'REVERSAL') strategyBadge = '<span class="bg-emerald-600/20 text-emerald-300 px-2 py-1 rounded border border-emerald-600/30 text-xs shadow-[0_0_10px_rgba(16,185,129,0.2)]">🎣 Mean Reversion</span>';
-        else strategyBadge = '<span class="text-gray-600 text-xs">Waiting...</span>';
-
-        // Tags
-        let tagsHtml = '';
-        if (Array.isArray(tags)) {
-            tags.forEach(tag => {
-                let colorClass = 'bg-gray-800 text-gray-400 border-gray-700';
-                if (tag.includes('Bull') || tag.includes('Golden') || tag.includes('Smart')) colorClass = 'bg-yellow-500/10 text-yellow-500 border-yellow-500/30';
-                else if (tag.includes('Bear') || tag.includes('Knife')) colorClass = 'bg-red-500/10 text-red-500 border-red-500/30';
-                else if (tag.includes('Whale') || tag.includes('Squeeze')) colorClass = 'bg-indigo-500/10 text-indigo-400 border-indigo-500/30 animate-pulse';
-                else if (tag.includes('Oversold') || tag.includes('Support')) colorClass = 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30';
-
-                tagsHtml += `<span class="inline-block px-2 py-0.5 rounded text-[10px] mr-1 mb-1 border ${colorClass}">${tag}</span>`;
-            });
-        }
-
-        // Confidence Score Bar (Blue/Purple theme)
-        let barColor = 'bg-gray-600';
-        let barWidth = confScore + '%';
-        if (confScore >= 80) barColor = 'bg-purple-500 shadow-[0_0_15px_rgba(168,85,247,0.6)]';
-        else if (confScore >= 60) barColor = 'bg-blue-500';
-        else if (confScore >= 40) barColor = 'bg-blue-800';
-
-        const row = `
-        <tr class="hover:bg-gray-800/40 border-b border-gray-800/30 transition group">
-            <td class="p-4 font-bold text-white sticky left-0 bg-[#0b0f19] group-hover:bg-gray-800/40 z-10 border-r border-gray-800/50">
-                ${h.sembol}
-                <div class="text-[9px] font-mono text-gray-500 mt-0.5">${h.hacimOrani.toFixed(1)}x Vol</div>
-            </td>
-            
-            <td class="p-4 text-blue-300 font-mono text-base tracking-tight">
-                ${h.fiyat.toFixed(2)} ₺
-            </td>
-            
-            <td class="p-4 text-center">${regimeBadge}</td>
-            <td class="p-4 text-center">${strategyBadge}</td>
-            
-            <td class="p-4">
-                <div class="flex flex-wrap max-w-[250px]">
-                    ${tagsHtml}
-                </div>
-            </td>
-            
-            <td class="p-4 text-center">
-                 <div class="flex flex-col items-center group/tooltip relative">
-                    <span class="text-white font-mono font-bold text-sm mb-1">${confScore}</span>
-                    <div class="w-24 h-1.5 bg-gray-800 rounded-full overflow-hidden border border-gray-700">
-                        <div class="h-full ${barColor}" style="width: ${barWidth}"></div>
-                    </div>
-                </div>
-            </td>
-            
-            <td class="p-4 text-right">
-                <button onclick="openAddModal()" 
-                    class="bg-blue-600 hover:bg-blue-500 text-white p-2 rounded transition shadow-lg shadow-blue-900/40 text-xs">
-                    <i class="fa-solid fa-plus"></i>
-                </button>
-            </td>
-        </tr>`;
-        tbody.innerHTML += row;
-    });
+    return `<span class="inline-block px-2 py-0.5 rounded text-[10px] mr-1 mb-1 border ${cls}">${tag}</span>`;
 }
+
+function getConvictionLED(conviction) {
+    const ledGreen = '<span class="w-2.5 h-2.5 rounded-full bg-emerald-400 shadow-[0_0_6px_rgba(52,211,153,0.8)]"></span>';
+    const ledYellow = '<span class="w-2.5 h-2.5 rounded-full bg-yellow-400 shadow-[0_0_6px_rgba(250,204,21,0.8)]"></span>';
+    const ledOff = '<span class="w-2.5 h-2.5 rounded-full bg-gray-700"></span>';
+
+    const configs = {
+        'DIAMOND': { leds: [ledGreen, ledGreen, ledGreen, ledGreen], badge: '💎 DIAMOND', cls: 'text-cyan-300 font-black' },
+        'GOLD': { leds: [ledGreen, ledGreen, ledGreen, ledOff], badge: '🥇 GOLD', cls: 'text-amber-300 font-bold' },
+        'SILVER': { leds: [ledGreen, ledGreen, ledOff, ledOff], badge: '🥈 SILVER', cls: 'text-gray-300 font-semibold' },
+        'BRONZE': { leds: [ledYellow, ledOff, ledOff, ledOff], badge: '🥉 BRONZE', cls: 'text-orange-400 font-normal' }
+    };
+    const cfg = configs[conviction] || configs['BRONZE'];
+    return `
+        <div class="flex flex-col items-end gap-1">
+            <span class="${cfg.cls} text-xs">${cfg.badge}</span>
+            <div class="flex gap-1">${cfg.leds.join('')}</div>
+        </div>`;
+}
+
+function getStrategyBadge(strategy) {
+    switch (strategy) {
+        case 'TREND': return '<span class="bg-blue-600/20 text-blue-300 px-2 py-0.5 rounded border border-blue-600/30 text-[10px]">📈 Trend</span>';
+        case 'BREAKOUT': return '<span class="bg-purple-600/20 text-purple-300 px-2 py-0.5 rounded border border-purple-600/30 text-[10px]">🚀 Breakout</span>';
+        case 'REVERSAL': return '<span class="bg-emerald-600/20 text-emerald-300 px-2 py-0.5 rounded border border-emerald-600/30 text-[10px]">🎣 Reversal</span>';
+        default: return '<span class="text-gray-600 text-[10px]">⏳ Neutral</span>';
+    }
+}
+
+function buildSmartCard(h, accentClass, borderClass) {
+    const tags = h.tags || [];
+    const unifiedScore = h.unifiedScore || 0;
+    const conviction = h.conviction || 'BRONZE';
+    const hasDanger = DANGER_TAGS_FE.some(d => tags.some(t => t.includes(d)));
+
+    let scoreColor = 'text-gray-400';
+    if (unifiedScore >= 75) scoreColor = 'text-emerald-400 font-bold';
+    else if (unifiedScore >= 50) scoreColor = 'text-yellow-400';
+    else scoreColor = 'text-red-400';
+
+    const tagsHtml = tags.map(getTagHtml).join('');
+    const scoreBar = `
+        <div class="w-full h-1 bg-gray-800 rounded-full overflow-hidden mt-1">
+            <div class="h-full ${unifiedScore >= 75 ? 'bg-emerald-500' : (unifiedScore >= 50 ? 'bg-yellow-500' : 'bg-red-500')}" style="width:${unifiedScore}%"></div>
+        </div>`;
+
+    const portfolio_warning = MY_PORTFOLIO.some(p => p.sembol === h.sembol) && hasDanger
+        ? `<div class="mt-2 text-[10px] bg-red-500/10 text-red-400 border border-red-500/30 rounded px-2 py-1 font-bold">⚠️ Portföyünüzde var — dikkat!</div>`
+        : '';
+
+    return `
+    <div class="glass rounded-xl p-5 border ${borderClass} hover:scale-[1.01] transition-transform relative">
+        <div class="flex justify-between items-start mb-3">
+            <div>
+                <span class="text-white font-black text-xl tracking-wide">${h.sembol}</span>
+                <div class="flex items-center gap-2 mt-1">
+                    <span class="text-blue-300 font-mono text-sm">${(h.fiyat || 0).toFixed(2)} ₺</span>
+                    ${getStrategyBadge(h.mainStrategy)}
+                </div>
+            </div>
+            ${getConvictionLED(conviction)}
+        </div>
+        
+        <div class="flex items-center justify-between mb-2">
+            <div class="flex flex-col">
+                <span class="text-[10px] text-gray-500 uppercase">Unified Score</span>
+                <span class="${scoreColor} text-2xl font-mono leading-none">${unifiedScore}</span>
+                ${scoreBar}
+            </div>
+            <div class="flex flex-col items-end gap-1">
+                <div class="text-[10px] text-gray-500">
+                    Stop: <span class="text-red-300 font-mono">${(h.stopPrice || 0).toFixed(2)} ₺</span>
+                </div>
+                <div class="text-[10px] text-gray-500">
+                    Hedef: <span class="text-emerald-300 font-mono">${(h.targetPrice || 0).toFixed(2)} ₺</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="flex flex-wrap mt-3">
+            ${tagsHtml || '<span class="text-gray-700 text-[10px]">Tag yok</span>'}
+        </div>
+        ${portfolio_warning}
+
+        <button onclick="openAddModal()"
+            class="mt-3 w-full bg-blue-600/20 hover:bg-blue-600/40 text-blue-300 border border-blue-600/30 py-1.5 rounded text-xs font-semibold transition flex items-center justify-center gap-1">
+            <i class="fa-solid fa-plus"></i> Portföye Ekle
+        </button>
+    </div>`;
+}
+
+function renderSmartPicks(data) {
+    const topGrid = document.getElementById('topPicksGrid');
+    const watchGrid = document.getElementById('watchlistGrid');
+    const avoidGrid = document.getElementById('avoidGrid');
+    const regimeLabel = document.getElementById('regimeLabel');
+    const topCount = document.getElementById('topPicksCount');
+    const watchCount = document.getElementById('watchlistCount');
+    const avoidCount = document.getElementById('avoidCount');
+
+    if (!topGrid) return;
+
+    // ── Market Regime Banner ──
+    const firstWithRegime = data.find(h => h.marketRegime);
+    const regime = firstWithRegime ? firstWithRegime.marketRegime : 'SIDEWAYS';
+    if (regimeLabel) {
+        let rClass = 'text-gray-300', rIcon = '⚖️';
+        if (regime === 'BULL') { rClass = 'text-emerald-400'; rIcon = '🐂'; }
+        if (regime === 'BEAR') { rClass = 'text-red-400'; rIcon = '🐻'; }
+        regimeLabel.innerHTML = `<span class="${rClass}">${rIcon} ${regime}</span>`;
+    }
+
+    // ── Section classification ──
+    const DANGER = DANGER_TAGS_FE;
+    const avoidList = [];
+    const topList = [];
+    const watchList = [];
+
+    data.forEach(h => {
+        const tags = h.tags || [];
+        const unified = h.unifiedScore || 0;
+        const conviction = h.conviction || 'BRONZE';
+        const hasDanger = DANGER.some(d => tags.some(t => t.includes(d)));
+
+        if (hasDanger) {
+            avoidList.push(h);
+        } else if (unified >= 65 && (conviction === 'DIAMOND' || conviction === 'GOLD')) {
+            topList.push(h);
+        } else if (unified >= 50 || conviction === 'SILVER') {
+            watchList.push(h);
+        }
+        // below 50 + no danger → silently excluded (NO_TRADE)
+    });
+
+    // Sort by unifiedScore desc
+    topList.sort((a, b) => (b.unifiedScore || 0) - (a.unifiedScore || 0));
+    watchList.sort((a, b) => (b.unifiedScore || 0) - (a.unifiedScore || 0));
+    avoidList.sort((a, b) => (b.unifiedScore || 0) - (a.unifiedScore || 0));
+
+    if (topCount) topCount.innerText = topList.length;
+    if (watchCount) watchCount.innerText = watchList.length;
+    if (avoidCount) avoidCount.innerText = avoidList.length;
+
+    // ── Render cards ──
+    topGrid.innerHTML = topList.length
+        ? topList.map(h => buildSmartCard(h, 'border-amber-500/30', 'border-amber-500/20')).join('')
+        : '<p class="text-gray-600 text-sm col-span-3 py-8 text-center">Bugün kriterleri karşılayan hisse yok. Fırsatı bekleyin.</p>';
+
+    watchGrid.innerHTML = watchList.length
+        ? watchList.map(h => buildSmartCard(h, 'border-blue-500/30', 'border-blue-500/20')).join('')
+        : '<p class="text-gray-600 text-sm col-span-3 py-8 text-center">İzlenecek hisse bulunmuyor.</p>';
+
+    avoidGrid.innerHTML = avoidList.length
+        ? avoidList.map(h => buildSmartCard(h, 'border-red-500/30', 'border-red-500/30')).join('')
+        : '<p class="text-gray-600 text-sm col-span-3 py-8 text-center">✅ Tehlikeli hisse yok — piyasa temiz görünüyor.</p>';
+}
+
+// Keep backward-compat alias (SignalR path)
+function renderProTable(data) { renderSmartPicks(data); }

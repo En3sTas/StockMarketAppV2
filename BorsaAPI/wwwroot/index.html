@@ -34,17 +34,14 @@
                         class="tab-active px-6 py-2 rounded-md text-sm font-bold transition flex items-center gap-2 text-emerald-400">
                         <i class="fa-solid fa-bullseye"></i> Trend Hunter
                     </button>
-                    <button onclick="switchTab('scout')" id="tab-scout"
-                        class="tab-passive px-6 py-2 rounded-md text-sm font-bold transition flex items-center gap-2 hover:text-orange-400">
-                        <i class="fa-brands fa-searchengin"></i> Scout Radar
-                    </button>
+
                     <button onclick="switchTab('all')" id="tab-all"
                         class="tab-passive px-6 py-2 rounded-md text-sm font-bold transition flex items-center gap-2 hover:text-gray-400">
                         <i class="fa-solid fa-list"></i> Tüm Hisseler
                     </button>
                     <button onclick="switchTab('pro')" id="tab-pro"
-                        class="tab-passive px-6 py-2 rounded-md text-sm font-bold transition flex items-center gap-2 hover:text-purple-400">
-                        <i class="fa-solid fa-building-columns"></i> Institutional
+                        class="tab-passive px-6 py-2 rounded-md text-sm font-bold transition flex items-center gap-2 hover:text-amber-400">
+                        <i class="fa-solid fa-star"></i> Smart Picks
                     </button>
                     <button onclick="switchTab('portfolio')" id="tab-portfolio"
                         class="tab-passive px-6 py-2 rounded-md text-sm font-bold transition flex items-center gap-2">
@@ -303,52 +300,62 @@
             </div>
         </div>
 
-        <div id="pro-view" class="hidden grid grid-cols-12 gap-6">
-            <div class="col-span-12">
-                <div class="glass rounded-xl overflow-hidden shadow-2xl min-h-[500px]">
-                    <div class="px-6 py-4 border-b border-gray-800 flex justify-between items-center bg-[#0f1522]">
-                        <h3 class="font-bold text-white flex items-center gap-2 text-lg">
-                            <i class="fa-solid fa-building-columns text-purple-500"></i> Institutional Grade Analysis
-                        </h3>
-                        <div class="flex gap-2">
-                            <select id="proStrategyFilter" onchange="renderProTable(globalData)"
-                                class="bg-gray-800 text-xs text-white p-2 rounded border border-gray-700">
-                                <option value="ALL">All Strategies</option>
-                                <option value="TREND">Trend Followers</option>
-                                <option value="BREAKOUT">Breakout / Volume</option>
-                                <option value="REVERSAL">Mean Reversion</option>
-                            </select>
-                        </div>
-                    </div>
+        <!-- SMART PICKS VIEW -->
+        <div id="pro-view" class="hidden space-y-6">
 
-                    <div class="overflow-x-auto">
-                        <table class="w-full text-left border-collapse">
-                            <thead>
-                                <tr
-                                    class="bg-[#0f1522] text-gray-400 text-[11px] uppercase tracking-wider border-b border-gray-800 h-12">
-                                    <th onclick="sortTable('sembol')"
-                                        class="p-4 font-bold text-white cursor-pointer hover:text-purple-400">Sembol
-                                    </th>
-                                    <th onclick="sortTable('fiyat')" class="p-4 font-semibold cursor-pointer">Fiyat</th>
-                                    <th onclick="sortTable('marketRegime')"
-                                        class="p-4 font-semibold text-center cursor-pointer">Piyasa Rejimi</th>
-                                    <th onclick="sortTable('mainStrategy')"
-                                        class="p-4 font-semibold text-center cursor-pointer">Ana Strateji</th>
-                                    <th class="p-4 font-semibold text-left">Sinyal Etiketleri (Tags)</th>
-                                    <th onclick="sortTable('confidenceScore')"
-                                        class="p-4 font-semibold text-center cursor-pointer">Güven Skoru</th>
-                                    <th class="p-4 font-semibold text-right">İşlem</th>
-                                </tr>
-                            </thead>
-                            <tbody id="proTablosu" class="divide-y divide-gray-800 text-sm font-medium">
-                                <tr>
-                                    <td colspan="7" class="p-12 text-center text-gray-500">Veriler Yükleniyor...</td>
-                                </tr>
-                            </tbody>
-                        </table>
+            <!-- Market Regime Banner -->
+            <div id="regimeBanner"
+                class="glass rounded-xl p-5 flex flex-col sm:flex-row items-center justify-between gap-4 border border-amber-500/20">
+                <div class="flex items-center gap-4">
+                    <div class="bg-amber-500/10 p-3 rounded-full">
+                        <i class="fa-solid fa-globe text-amber-400 text-2xl"></i>
+                    </div>
+                    <div>
+                        <p class="text-xs text-gray-500 uppercase font-bold tracking-widest mb-1">Market Regime (XU100)
+                        </p>
+                        <div id="regimeLabel" class="text-2xl font-black tracking-widest">—</div>
+                    </div>
+                </div>
+                <div class="flex gap-6 text-center">
+                    <div>
+                        <p class="text-xs text-gray-500 uppercase font-semibold">Top Picks</p>
+                        <p id="topPicksCount" class="text-2xl font-bold text-amber-400 font-mono">0</p>
+                    </div>
+                    <div>
+                        <p class="text-xs text-gray-500 uppercase font-semibold">Watchlist</p>
+                        <p id="watchlistCount" class="text-2xl font-bold text-blue-400 font-mono">0</p>
+                    </div>
+                    <div>
+                        <p class="text-xs text-gray-500 uppercase font-semibold">Avoid</p>
+                        <p id="avoidCount" class="text-2xl font-bold text-red-400 font-mono">0</p>
                     </div>
                 </div>
             </div>
+
+            <!-- TOP PICKS -->
+            <div>
+                <h2 class="text-sm font-bold text-amber-400 uppercase tracking-widest flex items-center gap-2 mb-4">
+                    <i class="fa-solid fa-trophy"></i> TOP PICKS — Bugün Ne Almalı?
+                </h2>
+                <div id="topPicksGrid" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4"></div>
+            </div>
+
+            <!-- WATCHLIST -->
+            <div>
+                <h2 class="text-sm font-bold text-blue-400 uppercase tracking-widest flex items-center gap-2 mb-4">
+                    <i class="fa-solid fa-eye"></i> WATCHLIST — Ne Gelişiyor?
+                </h2>
+                <div id="watchlistGrid" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4"></div>
+            </div>
+
+            <!-- AVOID -->
+            <div>
+                <h2 class="text-sm font-bold text-red-400 uppercase tracking-widest flex items-center gap-2 mb-4">
+                    <i class="fa-solid fa-ban"></i> AVOID — Nelerden Uzak Dur?
+                </h2>
+                <div id="avoidGrid" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4"></div>
+            </div>
+
         </div>
 
         <div id="portfolio-view" class="hidden space-y-6">
