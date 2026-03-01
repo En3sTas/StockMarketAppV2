@@ -1,110 +1,110 @@
 # 🚀 Stock Market Signal Bot
 
-**Borsa İstanbul hisselerini gerçek zamanlı tarayan, sinyal üreten ve takip eden otomatik analiz sistemi.**
+**Automated real-time signal scanner, tracker, and notifier for Borsa Istanbul (BIST) stocks.**
 
-[![.NET](https://img.shields.io/badge/.NET-8.0-512BD4?style=flat-square&logo=dotnet)](https://dotnet.microsoft.com) [![Python](https://img.shields.io/badge/Python-3.10+-3776AB?style=flat-square&logo=python)](https://python.org) [![PostgreSQL](https://img.shields.io/badge/PostgreSQL-15-336791?style=flat-square&logo=postgresql)](https://postgresql.org) [![RabbitMQ](https://img.shields.io/badge/RabbitMQ-3-FF6600?style=flat-square&logo=rabbitmq)](https://rabbitmq.com)
+[![.NET](https://img.shields.io/badge/.NET-10.0-512BD4?style=flat-square&logo=dotnet)](https://dotnet.microsoft.com) [![Python](https://img.shields.io/badge/Python-3.10+-3776AB?style=flat-square&logo=python)](https://python.org) [![PostgreSQL](https://img.shields.io/badge/PostgreSQL-15-336791?style=flat-square&logo=postgresql)](https://postgresql.org) [![RabbitMQ](https://img.shields.io/badge/RabbitMQ-3-FF6600?style=flat-square&logo=rabbitmq)](https://rabbitmq.com)
 
 ---
 
-## 📊 Neler Yapıyor?
+## 📊 Features
 
-| Özellik | Açıklama |
+| Feature | Description |
 |---|---|
-| **Trend Hunter** | RSI, MACD, ADX, SMA50/200, hacim ve momentum bazlı sinyal motoru |
-| **Smart Picks / Pro Engine** | Kurumsal etiket sistemi (Whale Volume, Smart Money, Falling Knife...) |
-| **Unified Conviction** | İki motoru birleştiren DIAMOND / GOLD / SILVER / BRONZE skoru |
-| **Signal History** | Her BUY/WATCH sinyali günlük olarak kaydedilir, T+1/T+5/T+21 takibi |
-| **Telegram Bildirimleri** | Sinyal yükseltmesi veya cooldown'a göre akıllı bildirim gönderimi |
-| **Excel Raporu** | Her döngüde otomatik güncellenen renkli Excel dosyası |
-| **Gerçek Zamanlı UI** | SignalR tabanlı canlı dashboard (Trend / Smart Picks / Portföy sekmeleri) |
+| **Trend Hunter** | RSI, MACD, ADX, SMA50/200, volume & momentum-based signal engine |
+| **Smart Picks / Pro Engine** | Institutional tag system (Whale Volume, Smart Money, Falling Knife...) |
+| **Unified Conviction** | Merges both engines into DIAMOND / GOLD / SILVER / BRONZE rating |
+| **Signal History** | BUY/WATCH signals saved daily with T+1 / T+5 / T+21 performance tracking |
+| **Telegram Notifications** | Smart cooldown-based alerts — no spam, no missed signals |
+| **Excel Report** | Auto-updated color-coded Excel file after every analysis cycle |
+| **Real-time Dashboard** | SignalR-powered live UI with Trend / Smart Picks / Portfolio tabs |
 
 ---
 
-## 🏗️ Mimari
+## 🏗️ Architecture
 
 ```
 ┌─────────────────────────────────────────────────────┐
 │                   Python Worker                      │
 │   TvDatafeed + YFinance → Trend Engine + Pro Engine  │
 │   → Unified Score → RabbitMQ Publish                 │
-│   → Telegram Notification (smart cooldown)          │
-│   → Excel Export (data/sinyal_gecmisi.xlsx)         │
+│   → Telegram Notification (smart cooldown guard)    │
+│   → Excel Export  (data/signal_history.xlsx)        │
 └──────────────────────┬──────────────────────────────┘
                        │ AMQP
 ┌──────────────────────▼──────────────────────────────┐
-│              C# .NET 8 API (BorsaAPI)                │
-│   RabbitMQ Consumer → PostgreSQL (hisseler tablosu) │
+│            C# .NET 10 API  (BorsaAPI)                │
+│   RabbitMQ Consumer → PostgreSQL (hisseler table)   │
 │   → SignalR Hub → Frontend                          │
-│   → signal_history (günlük dedup ile kayıt)        │
+│   → signal_history (daily-dedup insert)             │
 └──────────────────────┬──────────────────────────────┘
                        │ HTTP / WebSocket
 ┌──────────────────────▼──────────────────────────────┐
-│               Web Arayüzü (wwwroot)                  │
-│   Trend / Smart Picks / Portföy / Sinyal Geçmişi     │
+│                Web Interface (wwwroot)                │
+│        Trend / Smart Picks / Portfolio / History     │
 └─────────────────────────────────────────────────────┘
 ```
 
 ---
 
-## ⚙️ Gereksinimler
+## ⚙️ Requirements
 
-- **Docker & Docker Compose** (PostgreSQL + RabbitMQ için)
-- **.NET 8 SDK**
+- **Docker & Docker Compose** (PostgreSQL + RabbitMQ)
+- **.NET 10 SDK**
 - **Python 3.10+**
-- **Telegram Bot Token** (bildirim için, opsiyonel)
+- **Telegram Bot Token** (optional — for notifications)
 
 ---
 
-## 🚀 Kurulum
+## 🚀 Setup
 
-### 1. Repoyu Klonla
+### 1. Clone the Repository
 
 ```bash
-git clone https://github.com/KULLANICI_ADI/StockMarketAppV2.git
+git clone https://github.com/YOUR_USERNAME/StockMarketAppV2.git
 cd StockMarketAppV2
 ```
 
-### 2. Environment Dosyasını Oluştur
+### 2. Create Environment File
 
 ```bash
 cp .env.example .env
 ```
 
-`.env` dosyasını düzenle:
+Edit `.env` with your values:
 
 ```env
 # PostgreSQL
 DB_USER=postgres
-DB_PASSWORD=guclu_bir_sifre_gir
+DB_PASSWORD=your_strong_password
 DB_NAME=borsa_db
 DB_HOST=localhost
 DB_PORT=5433
 
 # RabbitMQ
 RABBITMQ_USER=guest
-RABBITMQ_PASSWORD=guclu_bir_sifre_gir
+RABBITMQ_PASSWORD=your_strong_password
 RABBITMQ_HOST=localhost
 RABBITMQ_PORT=5672
 
-# Telegram (opsiyonel)
+# Telegram (optional)
 TELEGRAM_BOT_TOKEN=123456:ABC...
 TELEGRAM_CHAT_ID=987654321
 ```
 
-### 3. `appsettings.json` Oluştur
+### 3. Create `appsettings.json`
 
-`BorsaAPI/appsettings.json` dosyasını oluştur:
+Create `BorsaAPI/appsettings.json`:
 
 ```json
 {
   "ConnectionStrings": {
-    "DefaultConnection": "Host=localhost;Port=5433;Database=borsa_db;Username=postgres;Password=ŞIFRE"
+    "DefaultConnection": "Host=localhost;Port=5433;Database=borsa_db;Username=postgres;Password=YOUR_PASSWORD"
   },
   "RabbitMQ": {
     "Host": "localhost",
     "Port": 5672,
     "Username": "guest",
-    "Password": "ŞIFRE"
+    "Password": "YOUR_PASSWORD"
   },
   "Logging": {
     "LogLevel": { "Default": "Information" }
@@ -112,17 +112,17 @@ TELEGRAM_CHAT_ID=987654321
 }
 ```
 
-### 4. Python Bağımlılıklarını Yükle
+### 4. Install Python Dependencies
 
 ```bash
 python -m venv .venv
-.venv\Scripts\activate      # Windows
-# veya: source .venv/bin/activate  # Linux/Mac
+.venv\Scripts\activate        # Windows
+# or: source .venv/bin/activate  # Linux / Mac
 
 pip install -r requirements.txt
 ```
 
-### 5. `src/config.py` Oluştur
+### 5. Create `src/config.py`
 
 ```python
 import os
@@ -130,10 +130,10 @@ from dotenv import load_dotenv
 load_dotenv()
 
 DB_AYARLARI = {
-    "host":     os.getenv("DB_HOST", "localhost"),
+    "host":     os.getenv("DB_HOST",     "localhost"),
     "port":     int(os.getenv("DB_PORT", 5433)),
-    "dbname":   os.getenv("DB_NAME", "borsa_db"),
-    "user":     os.getenv("DB_USER", "postgres"),
+    "dbname":   os.getenv("DB_NAME",     "borsa_db"),
+    "user":     os.getenv("DB_USER",     "postgres"),
     "password": os.getenv("DB_PASSWORD", ""),
 }
 
@@ -146,70 +146,68 @@ TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN", "")
 TELEGRAM_CHAT_ID   = os.getenv("TELEGRAM_CHAT_ID",   "")
 
 HISSELER = [
-    "AKBNK", "ARCLK", "ASELS", "BIMAS", "EKGYO",
-    "EREGL", "FROTO", "GARAN", "GUBRF", "HEKTS",
-    "KCHOL", "KOZAL", "KRDMD", "MAVI", "MGROS",
-    "OTKAR", "PGSUS", "SAHOL", "SASA", "SDTTR",
-    "SISE",  "TAVHL", "TCELL", "THYAO", "TKFEN",
-    "TOASO", "TTKOM", "TUPRS", "VAKBN", "YKBNK",
-    # ... tüm hisseler config.py içinde tanımlı
+    "AKBNK", "EREGL", "GARAN", "KOZAL", "SAHOL",
+    "SDTTR", "THYAO", "TUPRS", "VAKBN", "YKBNK",
+    # ... add all tickers here
 ]
 ```
 
-### 6. Veritabanı ve RabbitMQ'yu Başlat
+### 6. Start Database & Message Broker
 
 ```bash
 docker-compose up -d
 ```
 
-PostgreSQL otomatik olarak 3 migration dosyasını çalıştırır:
-- `001_create_hisseler.sql` — Ana hisseler tablosu
-- `002_add_unified_columns.sql` — Unified score sütunları
-- `003_signal_history.sql` — Sinyal geçmişi tablosu
+PostgreSQL automatically runs all 3 migration files on first start:
+- `001_create_hisseler.sql` — Main stocks table
+- `002_add_unified_columns.sql` — Unified score columns
+- `003_signal_history.sql` — Signal history table
 
-### 7. C# API'yi Başlat
+### 7. Start the C# API
 
 ```bash
 cd BorsaAPI
 dotnet run
 ```
 
-API `http://localhost:5158` adresinde çalışır.
+API runs at `http://localhost:5158`.
 
-### 8. Python Worker'ı Başlat
+### 8. Start the Python Worker
 
 ```bash
 python src/main.py
 ```
 
+The worker scans all tickers continuously, applies both engines, and publishes results.
+
 ---
 
-## 📱 Telegram Bot Kurulumu
+## 📱 Telegram Bot Setup
 
-1. Telegram'da `@BotFather`'a `/newbot` komutu gönder
-2. Bot token'ını al → `.env` dosyasına yaz
-3. Botuna bir mesaj gönder, ardından şu URL'yi ziyaret et:
+1. Message `@BotFather` on Telegram → send `/newbot`
+2. Copy your bot token → paste into `.env`
+3. Send any message to your new bot, then visit:
    ```
    https://api.telegram.org/bot<TOKEN>/getUpdates
    ```
-4. `chat.id` değerini al → `.env` dosyasına yaz
+4. Find `chat.id` in the response → paste into `.env`
 
 ---
 
-## 📈 Telegram Bildirim Türleri
+## � Telegram Notification Types
 
-### 1. Trend Hunter Bildirimi
-BUY veya STRONG_BUY sinyali gelince:
+### 1. Trend Hunter Alert
+Sent on BUY or STRONG_BUY signal:
 ```
 🚀 STRONG_BUY — SDTTR
 
-📊 Teknik: RSI: 42.3 | ADX: 38.1 | Score: 85
-💰 Fiyat: 45.20 ₺
-🎯 Hedef: 52.00 ₺  🛡️ Stop: 41.50 ₺
+📊 Technical: RSI: 42.3 | ADX: 38.1 | Score: 85
+💰 Price: 45.20 ₺
+🎯 Target: 52.00 ₺  🛡️ Stop: 41.50 ₺
 ```
 
-### 2. Smart Picks Bildirimi
-Yüksek Unified Score'lu sinyallerde:
+### 2. Smart Picks Alert
+Sent on high Unified Score signals:
 ```
 💎 DIAMOND — SDTTR
 
@@ -218,106 +216,107 @@ Yüksek Unified Score'lu sinyallerde:
 🏷️ Tags: Strong Trend, Smart Money In, Long-Term Bull
 ```
 
-### Akıllı Cooldown Sistemi
-| Sinyal | Cooldown |
+### Smart Cooldown Rules
+
+| Condition | Action |
 |---|---|
-| Sinyal yükseldi (BUY→STRONG_BUY) | Her zaman gönder |
-| Skor +8 puan atladı | Min 1 saat sonra |
-| STRONG_BUY devam ediyor | 4 saat sonra |
-| BUY devam ediyor | 6 saat sonra |
-| WATCH devam ediyor | 8 saat sonra |
+| Signal escalated (e.g. BUY → STRONG_BUY) | Always notify |
+| Score jumped ≥ 8 points | Notify after min 1 hour |
+| STRONG_BUY continuing | Re-notify after 4 hours |
+| BUY continuing | Re-notify after 6 hours |
+| WATCH continuing | Re-notify after 8 hours |
 
 ---
 
-## 📊 Excel Raporu
+## 📊 Excel Report
 
-Her analiz döngüsünün sonunda `data/sinyal_gecmisi.xlsx` otomatik güncellenir.
+`data/sinyal_gecmisi.xlsx` is auto-regenerated at the end of every analysis cycle.
 
-Manuel çalıştırmak için:
+To generate manually:
 ```bash
 python src/excel_exporter.py
 ```
 
-**Excel içeriği:**
-- Sembol, Tarih, Sinyal (renk kodlu satırlar)
-- Conviction seviyesi (💎/🥇/🥈/🥉)
-- Giriş / Stop / Hedef fiyat + Risk/Ödül oranı
-- RSI, ADX, MACD
-- Market Regime, Strateji, Tags
-- T+1 / T+5 / T+21 fiyat ve % performans (ilerleyen günlerde dolar)
-- Özet sayfası: toplam sinyal, ortalama performanslar
+**Sheet 1 — Signal History:**
+- Symbol, Date, Signal type (color-coded rows: green = BUY, gold = WATCH)
+- Conviction level (💎 DIAMOND / 🥇 GOLD / 🥈 SILVER / 🥉 BRONZE)
+- Entry / Stop / Target price + Risk-Reward ratio
+- RSI, ADX, MACD Histogram
+- Market Regime, Strategy, Tags
+- T+1 / T+5 / T+21 price and % performance (populated over time)
+
+**Sheet 2 — Summary:**
+- Total signal counts by type
+- Average T+1 / T+5 / T+21 performance across all signals
 
 ---
 
-## 🗂️ Proje Yapısı
+## 🗂️ Project Structure
 
 ```
 StockMarketAppV2/
-├── BorsaAPI/               # C# .NET 8 Backend
-│   ├── Controller/         # API endpoints
-│   ├── Models/             # Hisse, SignalHistory modelleri
+├── BorsaAPI/               # C# .NET 10 Backend
+│   ├── Controller/         # REST API endpoints
+│   ├── Models/             # Hisse, SignalHistory models
 │   ├── Services/           # HisseRepository, HisseService
 │   ├── Hubs/               # SignalR BorsaHub
 │   ├── Infrastructure/     # RabbitMQ Consumer
-│   └── wwwroot/            # Frontend (HTML/JS/CSS)
+│   └── wwwroot/            # Frontend (HTML / JS / CSS)
 ├── src/                    # Python Worker
-│   ├── main.py             # Ana döngü ve orkestrasyon
-│   ├── config.py           # Konfigürasyon (gitignore'da)
-│   ├── excel_exporter.py   # Excel rapor üretici
+│   ├── main.py             # Main orchestration loop
+│   ├── config.py           # Configuration (gitignored)
+│   ├── excel_exporter.py   # Excel report generator
 │   └── core/
-│       ├── analiz.py           # Veri çekme (TvDatafeed/YFinance)
-│       ├── trend_engine.py     # Trend Hunter sinyal motoru
-│       ├── pro_engine.py       # Pro/Institutional analiz motoru
-│       ├── telegram_notifier.py # Telegram bildirim gönderici
-│       ├── notification_guard.py # Akıllı cooldown/dedup sistemi
-│       └── rabbitmq_manager.py  # RabbitMQ bağlantı yöneticisi
-├── migrations/             # PostgreSQL migration SQL dosyaları
-├── data/                   # Üretilen veriler (gitignore'da)
+│       ├── analiz.py             # Data fetcher (TvDatafeed / YFinance)
+│       ├── trend_engine.py       # Trend Hunter signal engine
+│       ├── pro_engine.py         # Pro / Institutional analysis engine
+│       ├── telegram_notifier.py  # Telegram alert sender
+│       ├── notification_guard.py # Smart cooldown / dedup system
+│       └── rabbitmq_manager.py   # RabbitMQ connection manager
+├── migrations/             # PostgreSQL SQL migration files
+├── data/                   # Generated data (gitignored)
 │   └── sinyal_gecmisi.xlsx
-├── docker-compose.yml      # PostgreSQL + RabbitMQ
-├── requirements.txt        # Python bağımlılıkları
-└── .env.example            # Örnek environment değişkenleri
+├── docker-compose.yml      # PostgreSQL + RabbitMQ services
+├── requirements.txt        # Python dependencies
+└── .env.example            # Environment variable template
 ```
 
 ---
 
-## 🔌 API Endpoint'leri
+## 🔌 API Endpoints
 
-| Method | URL | Açıklama |
+| Method | URL | Description |
 |---|---|---|
-| GET | `/api/hisseler` | Tüm hisse verilerini döner |
-| GET | `/api/hisseler?onlyTrend=true` | Sadece BUY/STRONG_BUY sinyallerini döner |
-| GET | `/api/market/pro` | Smart Picks / Pro Engine verisi |
-| GET | `/api/signals/history` | Sinyal geçmişi (JWT parametreleri: sembol, limit) |
-| WS  | `/borsahub` | SignalR gerçek zamanlı güncellemeler |
+| GET | `/api/hisseler` | All stock data |
+| GET | `/api/hisseler?onlyTrend=true` | BUY / STRONG_BUY signals only |
+| GET | `/api/market/pro` | Smart Picks / Pro Engine data |
+| GET | `/api/signals/history?limit=50&sembol=THYAO` | Signal history (filterable) |
+| WS  | `/borsahub` | SignalR real-time updates |
 
 ---
 
-## 🛠️ Teknoloji Yığını
+## 🛠️ Tech Stack
 
-| Katman | Teknoloji |
+| Layer | Technology |
 |---|---|
-| **Backend** | C# .NET 8, ASP.NET Core, SignalR |
-| **İş Mantığı** | Python 3.10, Pandas, Pandas-TA |
-| **Veri Kaynağı** | TvDatafeed (TradingView), Yahoo Finance |
-| **Mesajlaşma** | RabbitMQ (AMQP) |
-| **Veritabanı** | PostgreSQL 15 |
+| **Backend** | C# .NET 10, ASP.NET Core, SignalR |
+| **Analysis Engine** | Python 3.10, Pandas, Pandas-TA |
+| **Data Sources** | TvDatafeed (TradingView), Yahoo Finance |
+| **Messaging** | RabbitMQ (AMQP) via Pika / .NET client |
+| **Database** | PostgreSQL 15 |
 | **Frontend** | HTML5, Vanilla JS, Tailwind CSS |
-| **Bildirim** | Telegram Bot API |
-| **Raporlama** | OpenPyXL (Excel) |
-| **Konteyner** | Docker, Docker Compose |
+| **Notifications** | Telegram Bot API |
+| **Reporting** | OpenPyXL (Excel) |
+| **Infrastructure** | Docker, Docker Compose |
 
 ---
 
-## ⚠️ Önemli Notlar
+## ⚠️ Disclaimer
 
-- **Yatırım tavsiyesi değildir.** Bu sistem eğitim ve araştırma amaçlıdır.
-- TvDatafeed ücretsiz olup veri kalitesi değişkenlik gösterebilir.
-- Bot Borsa İstanbul saatleri dışında da çalışır; bu durumlarda sinyal kalitesi düşük olabilir.
-- `data/` klasörü git tarafından izlenmez; Excel dosyası ve bildirim state'i burada tutulur.
+This project is for **educational and research purposes only**. It does not constitute financial advice. Always do your own research before making investment decisions. TvDatafeed is a free data source and may have limitations in data quality or availability.
 
 ---
 
-## 📄 Lisans
+## 📄 License
 
-Bu proje kişisel kullanım amaçlıdır.
+Personal use only.
