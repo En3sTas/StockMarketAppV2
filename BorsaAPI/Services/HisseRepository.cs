@@ -309,5 +309,116 @@ namespace BorsaAPI.Services
                 }
             }
         }
+
+        public void KaydetSignalHistory(Hisse hisse)
+        {
+            using (NpgsqlConnection conn = new NpgsqlConnection(_connectionString))
+            {
+                conn.Open();
+
+                // ── Duplicate Guard ───────────────────────────────────────────
+                // Bugün aynı sembol + aynı sinyal zaten kaydedildiyse ekleme.
+                string checkSql = @"
+                    SELECT COUNT(*) FROM signal_history
+                    WHERE sembol   = @sembol
+                      AND signal   = @signal
+                      AND signal_date::date = CURRENT_DATE";
+
+                using (NpgsqlCommand checkCmd = new NpgsqlCommand(checkSql, conn))
+                {
+                    checkCmd.Parameters.AddWithValue("@sembol", hisse.Sembol);
+                    checkCmd.Parameters.AddWithValue("@signal", hisse.Signal);
+                    long count = (long)(checkCmd.ExecuteScalar() ?? 0L);
+                    if (count > 0) return;   // Bugün zaten kaydedildi, atla
+                }
+
+                // ── Insert ────────────────────────────────────────────────────
+                string sql = @"
+                    INSERT INTO signal_history (
+                        sembol, signal_date, signal, unified_score, conviction, score,
+                        fiyat, stop_price, target_price,
+                        rsi, adx, macd_hist,
+                        market_regime, main_strategy, tags
+                    ) VALUES (
+                        @sembol, NOW(), @signal, @unified_score, @conviction, @score,
+                        @fiyat, @stop_price, @target_price,
+                        @rsi, @adx, @macd_hist,
+                        @market_regime, @main_strategy, @tags
+                    )";
+
+                using (NpgsqlCommand cmd = new NpgsqlCommand(sql, conn))
+                {
+                    cmd.Parameters.AddWithValue("@sembol",        hisse.Sembol);
+                    cmd.Parameters.AddWithValue("@signal",        hisse.Signal);
+                    cmd.Parameters.AddWithValue("@unified_score", hisse.UnifiedScore);
+                    cmd.Parameters.AddWithValue("@conviction",    hisse.Conviction);
+                    cmd.Parameters.AddWithValue("@score",         hisse.Score);
+                    cmd.Parameters.AddWithValue("@fiyat",         hisse.Fiyat);
+                    cmd.Parameters.AddWithValue("@stop_price",    hisse.StopPrice);
+                    cmd.Parameters.AddWithValue("@target_price",  hisse.TargetPrice);
+                    cmd.Parameters.AddWithValue("@rsi",           hisse.Rsi);
+                    cmd.Parameters.AddWithValue("@adx",           hisse.Adx);
+                    cmd.Parameters.AddWithValue("@macd_hist",     hisse.MacdHist);
+                    cmd.Parameters.AddWithValue("@market_regime", hisse.MarketRegime);
+                    cmd.Parameters.AddWithValue("@main_strategy", hisse.MainStrategy);
+                    cmd.Parameters.AddWithValue("@tags",          (object?)hisse.Tags ?? DBNull.Value);
+                    cmd.ExecuteNonQuery();
+                }
+            }
+        }
+
+
+        public List<SignalHistory> GetSignalHistory(string? sembol, int limit)
+        {
+            var list = new List<SignalHistory>();
+            using (NpgsqlConnection conn = new NpgsqlConnection(_connectionString))
+            {
+                conn.Open();
+                string sql = string.IsNullOrEmpty(sembol)
+                    ? $"SELECT * FROM signal_history ORDER BY signal_date DESC LIMIT @limit"
+                    : $"SELECT * FROM signal_history WHERE sembol = @sembol ORDER BY signal_date DESC LIMIT @limit";
+
+                using (NpgsqlCommand cmd = new NpgsqlCommand(sql, conn))
+                {
+                    cmd.Parameters.AddWithValue("@limit", limit);
+                    if (!string.IsNullOrEmpty(sembol))
+                        cmd.Parameters.AddWithValue("@sembol", sembol);
+
+                    using (NpgsqlDataReader reader = cmd.ExecuteReader())
+                    {
+                        while (reader.Read())
+                        {
+                            var sh = new SignalHistory
+                            {
+                                Id          = reader.GetInt32(reader.GetOrdinal("id")),
+                                Sembol      = reader.GetString(reader.GetOrdinal("sembol")),
+                                SignalDate  = reader.GetDateTime(reader.GetOrdinal("signal_date")),
+                                Signal      = reader.IsDBNull(reader.GetOrdinal("signal"))       ? "NO_TRADE" : reader.GetString(reader.GetOrdinal("signal")),
+                                UnifiedScore= reader.IsDBNull(reader.GetOrdinal("unified_score"))? 0 : reader.GetInt32(reader.GetOrdinal("unified_score")),
+                                Conviction  = reader.IsDBNull(reader.GetOrdinal("conviction"))   ? "BRONZE" : reader.GetString(reader.GetOrdinal("conviction")),
+                                Score       = reader.IsDBNull(reader.GetOrdinal("score"))        ? 0 : reader.GetInt32(reader.GetOrdinal("score")),
+                                Fiyat       = reader.IsDBNull(reader.GetOrdinal("fiyat"))        ? 0 : reader.GetDecimal(reader.GetOrdinal("fiyat")),
+                                StopPrice   = reader.IsDBNull(reader.GetOrdinal("stop_price"))   ? 0 : reader.GetDecimal(reader.GetOrdinal("stop_price")),
+                                TargetPrice = reader.IsDBNull(reader.GetOrdinal("target_price")) ? 0 : reader.GetDecimal(reader.GetOrdinal("target_price")),
+                                Rsi         = reader.IsDBNull(reader.GetOrdinal("rsi"))          ? 0 : reader.GetDecimal(reader.GetOrdinal("rsi")),
+                                Adx         = reader.IsDBNull(reader.GetOrdinal("adx"))          ? 0 : reader.GetDecimal(reader.GetOrdinal("adx")),
+                                MacdHist    = reader.IsDBNull(reader.GetOrdinal("macd_hist"))    ? 0 : reader.GetDecimal(reader.GetOrdinal("macd_hist")),
+                                MarketRegime= reader.IsDBNull(reader.GetOrdinal("market_regime"))? "SIDEWAYS" : reader.GetString(reader.GetOrdinal("market_regime")),
+                                MainStrategy= reader.IsDBNull(reader.GetOrdinal("main_strategy"))? "NEUTRAL" : reader.GetString(reader.GetOrdinal("main_strategy")),
+                                Tags        = reader.IsDBNull(reader.GetOrdinal("tags"))         ? Array.Empty<string>() : reader.GetFieldValue<string[]>(reader.GetOrdinal("tags")),
+                                Fiyat1Gun   = reader.IsDBNull(reader.GetOrdinal("fiyat_1gun"))   ? null : reader.GetDecimal(reader.GetOrdinal("fiyat_1gun")),
+                                Fiyat1Hafta = reader.IsDBNull(reader.GetOrdinal("fiyat_1hafta")) ? null : reader.GetDecimal(reader.GetOrdinal("fiyat_1hafta")),
+                                Fiyat1Ay    = reader.IsDBNull(reader.GetOrdinal("fiyat_1ay"))    ? null : reader.GetDecimal(reader.GetOrdinal("fiyat_1ay")),
+                                Perf1Gun    = reader.IsDBNull(reader.GetOrdinal("perf_1gun"))    ? null : reader.GetDecimal(reader.GetOrdinal("perf_1gun")),
+                                Perf1Hafta  = reader.IsDBNull(reader.GetOrdinal("perf_1hafta"))  ? null : reader.GetDecimal(reader.GetOrdinal("perf_1hafta")),
+                                Perf1Ay     = reader.IsDBNull(reader.GetOrdinal("perf_1ay"))     ? null : reader.GetDecimal(reader.GetOrdinal("perf_1ay")),
+                            };
+                            list.Add(sh);
+                        }
+                    }
+                }
+            }
+            return list;
+        }
     }
 }

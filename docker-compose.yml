@@ -10,7 +10,9 @@ services:
       - "5433:5432"
     volumes:
       - postgres-data:/var/lib/postgresql/data
-      - ./migrations/001_create_hisseler.sql:/docker-entrypoint-initdb.d/init.sql
+      - ./migrations/001_create_hisseler.sql:/docker-entrypoint-initdb.d/001_create_hisseler.sql
+      - ./migrations/002_add_unified_columns.sql:/docker-entrypoint-initdb.d/002_add_unified_columns.sql
+      - ./migrations/003_signal_history.sql:/docker-entrypoint-initdb.d/003_signal_history.sql
     healthcheck:
       test: [ "CMD-SHELL", "pg_isready -U ${DB_USER} -d ${DB_NAME}" ]
       interval: 5s

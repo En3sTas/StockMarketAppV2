@@ -59,5 +59,21 @@ namespace BorsaAPI.Controllers
 
             return Ok(new { status = "Broadcasted", symbol = hisse.Sembol });
         }
+
+        // ── Signal History ─────────────────────────────────────────────
+        [HttpGet("/api/signals/history")]
+        public IActionResult GetSignalHistory([FromQuery] string? sembol, [FromQuery] int limit = 50)
+        {
+            try
+            {
+                var repository = HttpContext.RequestServices.GetRequiredService<IHisseRepository>();
+                var history = repository.GetSignalHistory(sembol, limit);
+                return Ok(history);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, "Error: " + ex.Message);
+            }
+        }
     }
 }

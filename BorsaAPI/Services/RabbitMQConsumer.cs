@@ -73,10 +73,17 @@ namespace BorsaAPI.Services
                             var repository = scope.ServiceProvider.GetRequiredService<IHisseRepository>();
                             var hubContext = scope.ServiceProvider.GetRequiredService<IHubContext<BorsaHub>>();
 
-                            // 1. Save to DB
+                            // 1. Save to DB (upsert)
                             repository.Kaydet(hisse);
-                            
-                            // 2. Real-time Broadcast
+
+                            // 2. Save to Signal History (only actionable signals)
+                            var trackSignals = new[] { "BUY", "STRONG_BUY", "WATCH" };
+                            if (trackSignals.Contains(hisse.Signal))
+                            {
+                                repository.KaydetSignalHistory(hisse);
+                            }
+
+                            // 3. Real-time Broadcast
                             await hubContext.Clients.All.SendAsync("ReceiveStockUpdate", hisse);
                         }
                     }

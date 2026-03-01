@@ -1,0 +1,26 @@
+{
+  "SDTTR_trend": {
+    "signal": "STRONG_BUY",
+    "unified_score": 90,
+    "last_notified": 1772362352.449033,
+    "last_notified_human": "2026-03-01 13:52"
+  },
+  "SDTTR_smart": {
+    "signal": "BUY",
+    "unified_score": 100,
+    "last_notified": 1772362352.4366658,
+    "last_notified_human": "2026-03-01 13:52"
+  },
+  "KOZAL": {
+    "signal": "WATCH",
+    "unified_score": 60,
+    "last_notified": 1772362352.4619634,
+    "last_notified_human": "2026-03-01 13:52"
+  },
+  "EREGL": {
+    "signal": "BUY",
+    "unified_score": 65,
+    "last_notified": 1772362352.4818373,
+    "last_notified_human": "2026-03-01 13:52"
+  }
+}

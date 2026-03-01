@@ -12,10 +12,11 @@ import config
 from core import analiz
 from core.rabbitmq_manager import RabbitMQManager 
 from config import HISSELER
+from core import telegram_notifier
+from core.notification_guard import should_notify
 
 # Engines
 from core import trend_engine
-
 from core import pro_engine
 
 # ─────────────────────────────────────────────────────────
@@ -110,7 +111,7 @@ def calculate_unified_score(base_score: int, pro_tags: list, regime: str, signal
 
 # Global Market Context
 market_index_df = None
-# Global RabbitMQ Instance (Tek worker olduğu için global kullanabiliriz)
+# Global RabbitMQ Instance
 global_mq = None
 
 def get_rabbitmq_connection():
@@ -236,6 +237,23 @@ def hisse_islemcisi(sembol):
             except Exception as e:
                 print(f"⚠️ RabbitMQ Error ({sembol}): {e}")
 
+            # ── Telegram Bildirimleri (Guard Kontrollü) ───────────────
+            try:
+                # Tür 1: Trend Hunter — BUY veya STRONG_BUY
+                if signal in ("BUY", "STRONG_BUY"):
+                    if should_notify(f"{sembol}_trend", signal, score):
+                        if telegram_notifier.send_trend_notification(payload):
+                            print(f"📲 Telegram Trend gönderildi: {sembol}")
+
+                # Tür 2: Smart Picks — unified_signal BUY veya STRONG_BUY
+                if unified_signal in ("BUY", "STRONG_BUY"):
+                    if should_notify(f"{sembol}_smart", unified_signal, unified_score):
+                        if telegram_notifier.send_smart_picks_notification(payload):
+                            print(f"📲 Telegram Smart Picks gönderildi: {sembol}")
+            except Exception as e:
+                print(f"⚠️ Telegram Hata ({sembol}): {e}")
+            # ────────────────────────────────────────────────────────
+
             print(f"✅ {sembol} [{strategy}] -> Signal: {signal} | Score: {score} | Unified: {unified_score} [{conviction}] | Pro: {pro_main_strategy}")
             time.sleep(random.uniform(0.5, 1.5))
             return None # Başarılı olduğu için None döndür (hata listesine eklenmesin)
@@ -303,6 +321,14 @@ def sistemi_calistir():
     bitis = time.time()
     print(f"🏁 CONGRATULATIONS! All stocks completed in {bitis - baslangic:.2f} seconds.")
 
+    # ── Excel Geçmiş Raporu Güncelle ─────────────────────────────────────────
+    try:
+        from excel_exporter import export_signal_history
+        export_signal_history()
+    except Exception as e:
+        print(f"⚠️ Excel export hatası (kritik değil): {e}")
+
+
 if __name__ == "__main__":
     print("🔥 Warming up system...")
     time.sleep(2)
@@ -313,9 +339,9 @@ if __name__ == "__main__":
     while True:
         try:
             sistemi_calistir()
-            print("⏳ Waiting 1 day for next update...") 
+            print("⏳ Waiting 1 minutes for next update...") 
             # 24 Saat bekleme (veya schedule kütüphanesi ile belirli saate ayarlayabilirsin)
-            time.sleep(86400) 
+            time.sleep(60) 
         except KeyboardInterrupt:
             print("\n🛑 Program stopped.")
             break

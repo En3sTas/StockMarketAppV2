@@ -9,3 +9,5 @@ requests
 pika
 tqdm
 pyarrow
+openpyxl
+python-dotenv
