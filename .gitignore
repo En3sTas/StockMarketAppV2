@@ -34,3 +34,8 @@ BorsaAPI/obj/
 # OS
 .DS_Store
 Thumbs.db
+
+# Logs and Temporary files
+tmp/
+*.log
+api_logs.txt

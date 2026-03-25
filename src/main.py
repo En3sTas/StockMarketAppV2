@@ -8,10 +8,10 @@ import json
 # Add local directory to path
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
-import config 
+import config
 from core import analiz
-from core.rabbitmq_manager import RabbitMQManager 
-from config import HISSELER
+from core.rabbitmq_manager import RabbitMQManager
+from config import STOCKS
 from core import telegram_notifier
 from core.notification_guard import should_notify
 
@@ -57,19 +57,18 @@ def calculate_unified_score(base_score: int, pro_tags: list, regime: str, signal
     pro_modifier = (positive_count * 5) + (warning_count * -5) + (danger_count * -15)
 
     # 3. Apply regime multiplier
-    multiplier = REGIME_MULTIPLIER.get(regime, 0.85)
-    raw_score = base_score + pro_modifier
-    raw_score = max(0, min(100, raw_score))  # clamp before multiplier
+    multiplier  = REGIME_MULTIPLIER.get(regime, 0.85)
+    raw_score   = base_score + pro_modifier
+    raw_score   = max(0, min(100, raw_score))   # clamp before multiplier
     unified_score = int(raw_score * multiplier)
     unified_score = max(0, min(100, unified_score))
 
     # 4. Determine base unified signal
-    danger_tag_names = [t for t in pro_tags if any(dt in t for dt in DANGER_TAGS)]
-    has_falling_knife   = any("Falling Knife" in t for t in pro_tags)
-    has_bear_regime     = any("Bear Regime Risk" in t for t in pro_tags)
-    has_high_sell_vol   = any("High Sell Vol" in t for t in pro_tags)
-    has_overbought      = any("Overbought" in t for t in pro_tags)
-    has_mfi_overbought  = any("MFI Overbought" in t for t in pro_tags)
+    has_falling_knife  = any("Falling Knife" in t for t in pro_tags)
+    has_bear_regime    = any("Bear Regime Risk" in t for t in pro_tags)
+    has_high_sell_vol  = any("High Sell Vol" in t for t in pro_tags)
+    has_overbought     = any("Overbought" in t for t in pro_tags)
+    has_mfi_overbought = any("MFI Overbought" in t for t in pro_tags)
 
     if unified_score >= 80 and danger_count == 0:
         unified_signal = "STRONG_BUY"
@@ -109,15 +108,15 @@ def calculate_unified_score(base_score: int, pro_tags: list, regime: str, signal
 
     return unified_score, unified_signal, conviction
 
+
 # Global Market Context
 market_index_df = None
 # Global RabbitMQ Instance
 global_mq = None
 
+
 def get_rabbitmq_connection():
-    """
-    Retrieves or creates a global RabbitMQ connection.
-    """
+    """Retrieves or creates a global RabbitMQ connection."""
     global global_mq
     if global_mq is None:
         try:
@@ -127,59 +126,56 @@ def get_rabbitmq_connection():
             global_mq = None
     return global_mq
 
-def hisse_islemcisi(sembol):
-    """
-    Processes a single stock symbol sequentially.
-    """
-    print(f"Checking: {sembol}...")
+
+def process_stock(symbol):
+    """Processes a single stock symbol: fetch → analyze → publish → notify."""
+    print(f"Checking: {symbol}...")
     try:
-        # Analiz modülünü çağır
-        sonuc = analiz.veri_cek_ve_hesapla(sembol)
-        
-        if sonuc:
-            (fiyat, sma50, sma200, fk, pd_dd, rsi, macd_line, macd_signal, macd_hist, 
-             adx, dmp, dmn, hacim_orani, 
-             swing_high, swing_low, macd_hist_onceki, hacim_onceki, 
-             sma50_onceki, rsi_onceki, fiyat_onceki, adx_onceki, atr,
-             current_df) = sonuc
+        result = analiz.fetch_and_calculate(symbol)
+
+        if result:
+            (price, sma50, sma200, pe_ratio, pb_ratio, rsi, macd_line, macd_signal, macd_hist,
+             adx, dmp, dmn, volume_ratio,
+             swing_high, swing_low, macd_hist_prev, volume_prev,
+             sma50_prev, rsi_prev, price_prev, adx_prev, atr,
+             current_df) = result
 
             data_dict = {
-                'sembol': sembol, 'fiyat': fiyat, 'sma50': sma50, 'sma200': sma200,
-                'fk': fk, 'pd_dd': pd_dd, 'rsi': rsi,
+                'symbol': symbol, 'price': price, 'sma50': sma50, 'sma200': sma200,
+                'pe_ratio': pe_ratio, 'pb_ratio': pb_ratio, 'rsi': rsi,
                 'macd_line': macd_line, 'macd_signal': macd_signal, 'macd_hist': macd_hist,
-                'adx': adx, 'dmp': dmp, 'dmn': dmn, 'hacim_orani': hacim_orani,
-                'swing_low': swing_low, 'macd_hist_onceki': macd_hist_onceki,
-                'hacim_onceki': hacim_onceki, 'sma50_onceki': sma50_onceki,
-                'rsi_onceki': rsi_onceki, 'fiyat_onceki': fiyat_onceki, 
-                'adx_onceki': adx_onceki, 'atr': atr
+                'adx': adx, 'dmp': dmp, 'dmn': dmn, 'volume_ratio': volume_ratio,
+                'swing_low': swing_low, 'macd_hist_prev': macd_hist_prev,
+                'volume_prev': volume_prev, 'sma50_prev': sma50_prev,
+                'rsi_prev': rsi_prev, 'price_prev': price_prev,
+                'adx_prev': adx_prev, 'atr': atr
             }
 
-            # Strategy Selection — sadece TREND Engine
+            # Strategy Selection — Trend Engine only
             strategy = "TREND"
             signal, score, stop_price, target_price = trend_engine.evaluate_stock(data_dict)
 
             # Pro Engine Analysis (Institutional)
-            pro_result = pro_engine.evaluate_stock(current_df, market_index_df)
-            
-            pro_tags = []
+            pro_result       = pro_engine.evaluate_stock(current_df, market_index_df)
+            pro_tags         = []
             pro_main_strategy = "NEUTRAL"
-            pro_regime = "SIDEWAYS"
-            pro_conf_score = 0
-            
-            if pro_result:
-                pro_tags = pro_result.get('tags', [])
-                pro_main_strategy = pro_result.get('main_strategy', 'NEUTRAL')
-                pro_regime = pro_result.get('market_regime', 'SIDEWAYS')
-                pro_conf_score = pro_result.get('confidence_score', 0)
+            pro_regime       = "SIDEWAYS"
+            pro_conf_score   = 0
 
-            # Fix #6: Regime-Aware Stop-Loss Adjustment
+            if pro_result:
+                pro_tags          = pro_result.get('tags', [])
+                pro_main_strategy = pro_result.get('main_strategy', 'NEUTRAL')
+                pro_regime        = pro_result.get('market_regime', 'SIDEWAYS')
+                pro_conf_score    = pro_result.get('confidence_score', 0)
+
+            # Regime-Aware Stop-Loss Adjustment
             if pro_regime == "BEAR" and stop_price > 0:
-                risk_distance = fiyat - stop_price
-                stop_price = fiyat - (risk_distance * 0.5)
-                reward_distance = target_price - fiyat
-                target_price = fiyat + (reward_distance * 0.6)
-                stop_price = round(stop_price, 2)
-                target_price = round(target_price, 2)
+                risk_distance   = price - stop_price
+                stop_price      = price - (risk_distance * 0.5)
+                reward_distance = target_price - price
+                target_price    = price + (reward_distance * 0.6)
+                stop_price      = round(stop_price, 2)
+                target_price    = round(target_price, 2)
 
             # Unified Conviction Engine
             unified_score, unified_signal, conviction = calculate_unified_score(
@@ -189,162 +185,156 @@ def hisse_islemcisi(sembol):
                 signal=signal
             )
 
-            # Construct Payload
+            # Build JSON payload — keys match C# Stock model (PascalCase)
             payload = {
-                "Sembol": sembol,
-                "Fiyat": fiyat,
-                "Sma50": sma50,
-                "Sma200": sma200,
-                "Fk": fk,
-                "PdDd": pd_dd,
-                "Rsi": rsi,
-                "MacdLine": macd_line,
-                "MacdSignal": macd_signal,
-                "MacdHist": macd_hist,
-                "Adx": adx,
-                "Dmp": dmp,
-                "Dmn": dmn,
-                "HacimOrani": hacim_orani,
-                "Signal": signal,
-                "Score": score,
-                "StopPrice": stop_price,
-                "TargetPrice": target_price,
-                "MacdHistOnceki": macd_hist_onceki,
-                "HacimOnceki": hacim_onceki,
-                "FiyatOnceki": fiyat_onceki,
-                "RsiOnceki": rsi_onceki,
-                "AdxOnceki": adx_onceki,
-                "Atr": atr,
-                "Strategy": strategy,
-                "SonGuncelleme": time.strftime('%Y-%m-%dT%H:%M:%S'),
-                "Tags": pro_tags,
-                "MainStrategy": pro_main_strategy,
-                "MarketRegime": pro_regime,
+                "Symbol":          symbol,
+                "Price":           price,
+                "Sma50":           sma50,
+                "Sma200":          sma200,
+                "PeRatio":         pe_ratio,
+                "PbRatio":         pb_ratio,
+                "Rsi":             rsi,
+                "MacdLine":        macd_line,
+                "MacdSignal":      macd_signal,
+                "MacdHist":        macd_hist,
+                "Adx":             adx,
+                "Dmp":             dmp,
+                "Dmn":             dmn,
+                "VolumeRatio":     volume_ratio,
+                "Signal":          signal,
+                "Score":           score,
+                "StopPrice":       stop_price,
+                "TargetPrice":     target_price,
+                "MacdHistPrev":    macd_hist_prev,
+                "VolumePrev":      volume_prev,
+                "PricePrev":       price_prev,
+                "RsiPrev":         rsi_prev,
+                "AdxPrev":         adx_prev,
+                "Atr":             atr,
+                "Strategy":        strategy,
+                "LastUpdated":     time.strftime('%Y-%m-%dT%H:%M:%S'),
+                "Tags":            pro_tags,
+                "MainStrategy":    pro_main_strategy,
+                "MarketRegime":    pro_regime,
                 "ConfidenceScore": pro_conf_score,
-                # ── Unified Conviction Engine ──
-                "UnifiedScore": unified_score,
-                "Conviction": conviction
+                "UnifiedScore":    unified_score,
+                "Conviction":      conviction
             }
-            
+
             # Publish to RabbitMQ
             try:
                 mq = get_rabbitmq_connection()
                 if mq:
                     mq.publish(payload)
                 else:
-                    print(f"⚠️ Skipping RabbitMQ publish for {sembol} (No Connection)")
-
+                    print(f"⚠️ Skipping RabbitMQ publish for {symbol} (no connection)")
             except Exception as e:
-                print(f"⚠️ RabbitMQ Error ({sembol}): {e}")
+                print(f"⚠️ RabbitMQ error ({symbol}): {e}")
 
-            # ── Telegram Bildirimleri (Guard Kontrollü) ───────────────
+            # Telegram Notifications (guard-controlled)
             try:
-                # Tür 1: Trend Hunter — BUY veya STRONG_BUY
+                # Type 1: Trend Hunter — BUY or STRONG_BUY
                 if signal in ("BUY", "STRONG_BUY"):
-                    if should_notify(f"{sembol}_trend", signal, score):
+                    if should_notify(f"{symbol}_trend", signal, score):
                         if telegram_notifier.send_trend_notification(payload):
-                            print(f"📲 Telegram Trend gönderildi: {sembol}")
+                            print(f"📲 Telegram Trend sent: {symbol}")
 
-                # Tür 2: Smart Picks — unified_signal BUY veya STRONG_BUY
+                # Type 2: Smart Picks — unified_signal BUY or STRONG_BUY
                 if unified_signal in ("BUY", "STRONG_BUY"):
-                    if should_notify(f"{sembol}_smart", unified_signal, unified_score):
+                    if should_notify(f"{symbol}_smart", unified_signal, unified_score):
                         if telegram_notifier.send_smart_picks_notification(payload):
-                            print(f"📲 Telegram Smart Picks gönderildi: {sembol}")
+                            print(f"📲 Telegram Smart Picks sent: {symbol}")
             except Exception as e:
-                print(f"⚠️ Telegram Hata ({sembol}): {e}")
-            # ────────────────────────────────────────────────────────
+                print(f"⚠️ Telegram error ({symbol}): {e}")
 
-            print(f"✅ {sembol} [{strategy}] -> Signal: {signal} | Score: {score} | Unified: {unified_score} [{conviction}] | Pro: {pro_main_strategy}")
+            print(f"✅ {symbol} [{strategy}] -> Signal: {signal} | Score: {score} | Unified: {unified_score} [{conviction}] | Pro: {pro_main_strategy}")
             time.sleep(random.uniform(0.5, 1.5))
-            return None # Başarılı olduğu için None döndür (hata listesine eklenmesin)
-        else:
-            print(f"⚠️ {sembol} returned empty -> Will retry.")
-            return sembol # Başarısız, tekrar denenecek
-            
-    except Exception as e:
-        print(f"❌ Error ({sembol}): {e} -> Will retry.")
-        return sembol # Başarısız, tekrar denenecek
+            return None   # Success — don't add to retry queue
 
-def sistemi_isit():
+        else:
+            print(f"⚠️ {symbol} returned empty → will retry.")
+            return symbol   # Failure — retry
+
+    except Exception as e:
+        print(f"❌ Error ({symbol}): {e} → will retry.")
+        return symbol   # Failure — retry
+
+
+def warmup():
     print("🔥 Warming up system connection...")
     try:
-        # Test amaçlı tek bir analiz
-        analiz.veri_cek_ve_hesapla("THYAO") 
-        get_rabbitmq_connection() # MQ bağlantısını da test et
+        analiz.fetch_and_calculate("THYAO")
+        get_rabbitmq_connection()
         print("✅ System ready!")
     except Exception as e:
         print(f"⚠️ Warm-up error (minor): {e}")
     time.sleep(2)
 
-def sistemi_calistir():
-    """
-    Main execution cycle. SEQUENTIAL processing.
-    """
+
+def run_cycle():
+    """Main execution cycle — sequential single-worker processing."""
     global market_index_df
-    baslangic = time.time()
-    
+    start_time = time.time()
+
     # 1. Fetch Market Context (Index)
-    print("🌍 Fetching Global Market Context (XU100)...")
+    print("🌍 Fetching Market Context (XU100)...")
     market_index_df = analiz.get_market_index()
     if market_index_df is not None:
-         regime = pro_engine.get_market_regime(market_index_df)[0]
-         print(f"🌍 Market Regime Detected: {regime}")
+        regime = pro_engine.get_market_regime(market_index_df)[0]
+        print(f"🌍 Market Regime Detected: {regime}")
     else:
-         print("⚠️ Market Context Unavailable. Creating in isolation.")
-    
-    print(f"🚀 Stock Market Robot (SINGLE WORKER MODE)...")
-    kuyruk = HISSELER.copy()
-    tur_sayisi = 1
-    
-    # Kuyruk bitene kadar dön
-    while len(kuyruk) > 0:
-        print(f"\n🔄 ROUND {tur_sayisi} STARTING | Remaining Stocks: {len(kuyruk)}")
-        hatali_hisseler = []
-        
-        # --- TEK WORKER DÖNGÜSÜ (Veri karışmasını %100 engeller) ---
-        for sembol in kuyruk:
-            sonuc = hisse_islemcisi(sembol)
-            # Eğer fonksiyon sembolü geri döndürdüyse hata var demektir, listeye ekle
-            if sonuc is not None:
-                hatali_hisseler.append(sonuc)
-        
-        kuyruk = hatali_hisseler
-        
-        if len(kuyruk) > 0:
-            print(f"🛑 {len(kuyruk)} stocks failed. Will retry after cooling down...")
-            bekleme_suresi = min(tur_sayisi * 5, 30) # Bekleme süresini biraz kısalttım
-            print(f"💤 Cooling down for {bekleme_suresi} seconds...")
-            time.sleep(bekleme_suresi)
-        
-        tur_sayisi += 1
-        
-    bitis = time.time()
-    print(f"🏁 CONGRATULATIONS! All stocks completed in {bitis - baslangic:.2f} seconds.")
+        print("⚠️ Market Context unavailable. Proceeding in isolation.")
 
-    # ── Excel Geçmiş Raporu Güncelle ─────────────────────────────────────────
+    print("🚀 Stock Market Robot (SINGLE WORKER MODE)...")
+    queue     = STOCKS.copy()
+    round_num = 1
+
+    while len(queue) > 0:
+        print(f"\n🔄 ROUND {round_num} STARTING | Remaining stocks: {len(queue)}")
+        failed = []
+
+        for symbol in queue:
+            result = process_stock(symbol)
+            if result is not None:
+                failed.append(result)
+
+        queue = failed
+
+        if len(queue) > 0:
+            wait_sec = min(round_num * 5, 30)
+            print(f"🛑 {len(queue)} stocks failed. Cooling down for {wait_sec}s...")
+            time.sleep(wait_sec)
+
+        round_num += 1
+
+    elapsed = time.time() - start_time
+    print(f"🏁 All stocks completed in {elapsed:.2f} seconds.")
+
+    # Update performance metrics and Excel signal history report
     try:
+        from performance_tracker import run_performance_tracker
+        run_performance_tracker()
         from excel_exporter import export_signal_history
         export_signal_history()
     except Exception as e:
-        print(f"⚠️ Excel export hatası (kritik değil): {e}")
+        print(f"⚠️ Report or Tracking error (non-critical): {e}")
 
 
 if __name__ == "__main__":
     print("🔥 Warming up system...")
     time.sleep(2)
-    sistemi_isit()
-    
-    print("🚀 Starting System... (Live Mode: 1 Day Loop)\n")
-    
+    warmup()
+
+    print("🚀 Starting system... (Live Mode: 1-minute loop)\n")
+
     while True:
         try:
-            sistemi_calistir()
-            print("⏳ Waiting 1 minutes for next update...") 
-            # 24 Saat bekleme (veya schedule kütüphanesi ile belirli saate ayarlayabilirsin)
-            time.sleep(60) 
+            run_cycle()
+            print("⏳ Waiting 1 minute for next update...")
+            time.sleep(60)
         except KeyboardInterrupt:
             print("\n🛑 Program stopped.")
             break
         except Exception as e:
-            print(f"💥 Critical Loop Error: {e}")
+            print(f"💥 Critical loop error: {e}")
             time.sleep(10)

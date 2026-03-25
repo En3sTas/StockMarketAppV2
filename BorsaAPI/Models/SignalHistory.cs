@@ -4,7 +4,7 @@ namespace BorsaAPI.Models
     public class SignalHistory
     {
         public int Id { get; set; }
-        public string Sembol { get; set; } = string.Empty;
+        public string Symbol { get; set; } = string.Empty;
         public DateTime SignalDate { get; set; }
 
         // Signal Info
@@ -14,7 +14,7 @@ namespace BorsaAPI.Models
         public int Score { get; set; } = 0;
 
         // Price at Signal Time
-        public decimal Fiyat { get; set; }
+        public decimal Price { get; set; }
         public decimal StopPrice { get; set; }
         public decimal TargetPrice { get; set; }
 
@@ -29,13 +29,13 @@ namespace BorsaAPI.Models
         public string[] Tags { get; set; } = Array.Empty<string>();
 
         // Future Price Tracking (auto-filled by Python worker)
-        public decimal? Fiyat1Gun { get; set; }
-        public decimal? Fiyat1Hafta { get; set; }
-        public decimal? Fiyat1Ay { get; set; }
+        public decimal? Price1Day { get; set; }
+        public decimal? Price1Week { get; set; }
+        public decimal? Price1Month { get; set; }
 
         // Performance %
-        public decimal? Perf1Gun { get; set; }
-        public decimal? Perf1Hafta { get; set; }
-        public decimal? Perf1Ay { get; set; }
+        public decimal? Perf1Day { get; set; }
+        public decimal? Perf1Week { get; set; }
+        public decimal? Perf1Month { get; set; }
     }
 }

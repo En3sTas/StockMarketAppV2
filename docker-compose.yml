@@ -1,4 +1,8 @@
 services:
+
+  # ─────────────────────────────────────────────
+  # 1. PostgreSQL Database
+  # ─────────────────────────────────────────────
   db:
     image: postgres:15
     container_name: borsa_db
@@ -6,8 +10,9 @@ services:
       POSTGRES_USER: ${DB_USER}
       POSTGRES_PASSWORD: ${DB_PASSWORD}
       POSTGRES_DB: ${DB_NAME}
+      TZ: Europe/Istanbul
     ports:
-      - "5433:5432"
+      - "5433:5432" # host:container  →  local tools connect via localhost:5433
     volumes:
       - postgres-data:/var/lib/postgresql/data
       - ./migrations/001_create_hisseler.sql:/docker-entrypoint-initdb.d/001_create_hisseler.sql
@@ -17,24 +22,107 @@ services:
       test: [ "CMD-SHELL", "pg_isready -U ${DB_USER} -d ${DB_NAME}" ]
       interval: 5s
       timeout: 5s
-      retries: 5
-    restart: always
+      retries: 10
+    restart: unless-stopped
+    networks:
+      - borsa-net
 
+  # ─────────────────────────────────────────────
+  # 2. RabbitMQ Message Broker
+  # ─────────────────────────────────────────────
   rabbitmq:
     image: rabbitmq:3-management
     container_name: borsa_mq
     ports:
-      - "5672:5672"
-      - "15672:15672"
+      - "5672:5672" # AMQP
+      - "15672:15672" # Management UI  →  http://localhost:15672
     environment:
       RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER}
       RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD}
+      TZ: Europe/Istanbul
     healthcheck:
       test: [ "CMD", "rabbitmq-diagnostics", "-q", "ping" ]
       interval: 10s
       timeout: 5s
-      retries: 5
-    restart: always
+      retries: 10
+    restart: unless-stopped
+    networks:
+      - borsa-net
 
+  # ─────────────────────────────────────────────
+  # 3. C# ASP.NET Core API  (+ wwwroot frontend)
+  # ─────────────────────────────────────────────
+  api:
+    build:
+      context: ./BorsaAPI
+      dockerfile: Dockerfile
+    container_name: borsa_api
+    ports:
+      - "8080:8080" # http://localhost:8080
+    environment:
+      ASPNETCORE_ENVIRONMENT: Production
+      ASPNETCORE_URLS: http://+:8080
+      # ── Database (override appsettings.json using __ notation) ───────────
+      ConnectionStrings__BorsaDb: "Host=db;Port=5432;Database=${DB_NAME};User ID=${DB_USER};Password=${DB_PASSWORD};Pooling=true;"
+      # ── RabbitMQ (override appsettings.json) ────────────────────────────
+      RabbitMQ__HostName: rabbitmq
+      RabbitMQ__Port: 5672
+      RabbitMQ__UserName: ${RABBITMQ_USER}
+      RabbitMQ__Password: ${RABBITMQ_PASSWORD}
+      TZ: Europe/Istanbul
+    depends_on:
+      db:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - borsa-net
+
+  # ─────────────────────────────────────────────
+  # 4. Python Stock Analysis Scheduler
+  # ─────────────────────────────────────────────
+  python:
+    build:
+      context: .
+      dockerfile: Dockerfile.python
+    container_name: borsa_python
+    environment:
+      # ── Database ─────────────────────────────────────────────────────────
+      DB_HOST: db # Docker service name (NOT localhost)
+      DB_PORT: 5432 # Container-internal port
+      DB_NAME: ${DB_NAME}
+      DB_USER: ${DB_USER}
+      DB_PASSWORD: ${DB_PASSWORD}
+      # ── RabbitMQ ─────────────────────────────────────────────────────────
+      RABBITMQ_HOST: rabbitmq # Docker service name (NOT localhost)
+      RABBITMQ_PORT: 5672
+      RABBITMQ_USER: ${RABBITMQ_USER}
+      RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD}
+      # ── Telegram ─────────────────────────────────────────────────────────
+      TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN}
+      TELEGRAM_CHAT_ID: ${TELEGRAM_CHAT_ID}
+      # ── Python ───────────────────────────────────────────────────────────
+      PYTHONUNBUFFERED: 1
+      TZ: Europe/Istanbul
+    depends_on:
+      db:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - borsa-net
+
+# ─────────────────────────────────────────────
+# Named volumes
+# ─────────────────────────────────────────────
 volumes:
   postgres-data:
+
+    # ─────────────────────────────────────────────
+    # Isolated bridge network
+    # ─────────────────────────────────────────────
+networks:
+  borsa-net:
+    driver: bridge

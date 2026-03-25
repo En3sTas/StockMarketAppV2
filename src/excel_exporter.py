@@ -97,7 +97,7 @@ def export_signal_history():
 
     # DB Bağlantısı
     try:
-        conn = psycopg2.connect(**config.DB_AYARLARI)
+        conn = psycopg2.connect(**config.DB_CONFIG)
         cur  = conn.cursor()
     except Exception as e:
         print(f"❌ DB bağlantı hatası: {e}")
@@ -107,23 +107,23 @@ def export_signal_history():
         WITH deduped AS (
             SELECT *,
                    ROW_NUMBER() OVER (
-                       PARTITION BY sembol, signal, DATE(signal_date)
+                       PARTITION BY symbol, signal, DATE(signal_date)
                        ORDER BY signal_date DESC
                    ) AS rn
             FROM signal_history
         )
         SELECT
-            sembol, signal_date, signal, conviction, score, unified_score,
-            fiyat, stop_price, target_price,
-            CASE WHEN target_price > 0 AND stop_price > 0 AND fiyat > 0
-                 THEN ROUND((target_price - fiyat) / NULLIF(fiyat - stop_price, 0), 2)
+            symbol, signal_date, signal, conviction, score, unified_score,
+            price, stop_price, target_price,
+            CASE WHEN target_price > 0 AND stop_price > 0 AND price > 0
+                 THEN ROUND((target_price - price) / NULLIF(price - stop_price, 0), 2)
                  ELSE NULL END AS rr_ratio,
             rsi, adx, macd_hist,
             market_regime, main_strategy,
             ARRAY_TO_STRING(tags, ', ') AS tags_str,
-            fiyat_1gun, perf_1gun,
-            fiyat_1hafta, perf_1hafta,
-            fiyat_1ay, perf_1ay
+            price_1day, perf_1day,
+            price_1week, perf_1week,
+            price_1month, perf_1month
         FROM deduped
         WHERE rn = 1
         ORDER BY signal_date DESC
@@ -215,13 +215,13 @@ def export_signal_history():
 
     # ─── Veri Satırları ───────────────────────────────────────────────────────
     for row_idx, row in enumerate(rows, 3):
-        (sembol, signal_date, signal, conviction, score, unified_score,
-         fiyat, stop_price, target_price, rr_ratio,
+        (symbol, signal_date, signal, conviction, score, unified_score,
+         price, stop_price, target_price, rr_ratio,
          rsi, adx, macd_hist,
          market_regime, main_strategy, tags_str,
-         fiyat_1gun, perf_1gun,
-         fiyat_1hafta, perf_1hafta,
-         fiyat_1ay, perf_1ay) = row
+         price_1day, perf_1day,
+         price_1week, perf_1week,
+         price_1month, perf_1month) = row
 
         # Satır arka plan rengi (sinyal tipine göre)
         if signal == "STRONG_BUY":
@@ -246,7 +246,7 @@ def export_signal_history():
             return cell
 
         # Sembol
-        put(1, sembol, _left(), font=_font(bold=True, size=10))
+        put(1, symbol, _left(), font=_font(bold=True, size=10))
 
         # Tarih
         tarih_str = signal_date.strftime("%d/%m/%Y %H:%M") if signal_date else "—"
@@ -269,7 +269,7 @@ def export_signal_history():
         put(6, unified_score or 0, font=_font(bold=True, color=uni_color, size=11))
 
         # Fiyat, Stop, Hedef
-        put(7, float(fiyat or 0), _right(), num_fmt='#,##0.00" ₺"')
+        put(7, float(price or 0), _right(), num_fmt='#,##0.00" ₺"')
         put(8, float(stop_price or 0), _right(), font=_font(color="FCA5A5"), num_fmt='#,##0.00" ₺"')
         put(9, float(target_price or 0), _right(), font=_font(color="86EFAC"), num_fmt='#,##0.00" ₺"')
 
@@ -306,31 +306,36 @@ def export_signal_history():
         put(16, tags_str or "—", _left(), font=_font(color=C_TEXT_DIM, size=8))
 
         # +1 Gün
-        put(17, float(fiyat_1gun) if fiyat_1gun else "—", _right())
+        put(17, float(price_1day) if price_1day else "—", _right())
         perf_cell = ws.cell(row=row_idx, column=18)
-        perf_cell.value     = _perf_str(perf_1gun)
-        perf_cell.fill      = _perf_fill(perf_1gun)
-        perf_cell.font      = _font(bold=True if perf_1gun is not None else False)
+        perf_cell.value     = _perf_str(perf_1day)
+        perf_cell.fill      = _perf_fill(perf_1day)
+        perf_cell.font      = _font(bold=True if perf_1day is not None else False)
         perf_cell.alignment = _center()
         perf_cell.border    = _border()
 
         # +1 Hafta
-        put(19, float(fiyat_1hafta) if fiyat_1hafta else "—", _right())
+        put(19, float(price_1week) if price_1week else "—", _right())
         perf_cell2 = ws.cell(row=row_idx, column=20)
-        perf_cell2.value     = _perf_str(perf_1hafta)
-        perf_cell2.fill      = _perf_fill(perf_1hafta)
-        perf_cell2.font      = _font(bold=True if perf_1hafta is not None else False)
+        perf_cell2.value     = _perf_str(perf_1week)
+        perf_cell2.fill      = _perf_fill(perf_1week)
+        perf_cell2.font      = _font(bold=True if perf_1week is not None else False)
         perf_cell2.alignment = _center()
         perf_cell2.border    = _border()
 
         # +1 Ay
-        put(21, float(fiyat_1ay) if fiyat_1ay else "—", _right())
+        put(21, float(price_1month) if price_1month else "—", _right())
         perf_cell3 = ws.cell(row=row_idx, column=22)
-        perf_cell3.value     = _perf_str(perf_1ay)
-        perf_cell3.fill      = _perf_fill(perf_1ay)
-        perf_cell3.font      = _font(bold=True if perf_1ay is not None else False)
+        perf_cell3.value     = _perf_str(perf_1month)
+        perf_cell3.fill      = _perf_fill(perf_1month)
+        perf_cell3.font      = _font(bold=True if perf_1month is not None else False)
+        perf_cell3.alignment = _center()
         perf_cell3.alignment = _center()
         perf_cell3.border    = _border()
+
+    # ─── Otomatik Filtre (Auto-Filter) ────────────────────────────────────────
+    last_col_letter = get_column_letter(len(headers))
+    ws.auto_filter.ref = f"A2:{last_col_letter}{ws.max_row}"
 
     # ─── Özet Sayfası ─────────────────────────────────────────────────────────
     ws2 = wb.create_sheet("📊 Özet")
@@ -362,9 +367,9 @@ def export_signal_history():
         vals = [float(r[col_idx]) for r in rows_arr if r[col_idx] is not None]
         return (sum(vals) / len(vals)) if vals else None
 
-    avg1g = perf_avg(17)   # perf_1gun
-    avg1h = perf_avg(19)   # perf_1hafta
-    avg1a = perf_avg(21)   # perf_1ay
+    avg1g = perf_avg(17)   # perf_1day
+    avg1h = perf_avg(19)   # perf_1week
+    avg1a = perf_avg(21)   # perf_1month
 
     summary_rows = [
         (4,  "Metrik",          "Değer"),

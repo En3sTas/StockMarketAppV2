@@ -4,7 +4,7 @@
 
 CREATE TABLE IF NOT EXISTS signal_history (
     id              SERIAL PRIMARY KEY,
-    sembol          VARCHAR(20) NOT NULL,
+    symbol          VARCHAR(20) NOT NULL,
     signal_date     TIMESTAMP DEFAULT NOW(),
 
     -- Signal Info
@@ -14,7 +14,7 @@ CREATE TABLE IF NOT EXISTS signal_history (
     score           INTEGER DEFAULT 0,
 
     -- Price at Signal Time
-    fiyat           DECIMAL DEFAULT 0,
+    price           DECIMAL DEFAULT 0,
     stop_price      DECIMAL DEFAULT 0,
     target_price    DECIMAL DEFAULT 0,
 
@@ -29,16 +29,16 @@ CREATE TABLE IF NOT EXISTS signal_history (
     tags            TEXT[],
 
     -- Future Price Tracking (filled automatically by Python worker)
-    fiyat_1gun      DECIMAL,    -- 1 gun sonraki kapanis (T+1)
-    fiyat_1hafta    DECIMAL,    -- 1 hafta sonraki kapanis (T+5)
-    fiyat_1ay       DECIMAL,    -- 1 ay sonraki kapanis (T+21)
+    price_1day      DECIMAL,    -- closing price at T+1
+    price_1week     DECIMAL,    -- closing price at T+5
+    price_1month    DECIMAL,    -- closing price at T+21
 
     -- Performance % (calculated when filled)
-    perf_1gun       DECIMAL,
-    perf_1hafta     DECIMAL,
-    perf_1ay        DECIMAL
+    perf_1day       DECIMAL,
+    perf_1week      DECIMAL,
+    perf_1month     DECIMAL
 );
 
-CREATE INDEX IF NOT EXISTS idx_signal_history_sembol ON signal_history(sembol);
+CREATE INDEX IF NOT EXISTS idx_signal_history_symbol ON signal_history(symbol);
 CREATE INDEX IF NOT EXISTS idx_signal_history_date   ON signal_history(signal_date);
 CREATE INDEX IF NOT EXISTS idx_signal_history_signal ON signal_history(signal);

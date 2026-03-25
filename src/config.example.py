@@ -6,7 +6,7 @@ from dotenv import load_dotenv
 load_dotenv(os.path.join(os.path.dirname(__file__), '..', '.env'))
 
 # Database Connection Settings (reads from .env)
-DB_AYARLARI = {
+DB_CONFIG = {
     "host": os.getenv("DB_HOST", "localhost"),
     "port": int(os.getenv("DB_PORT", "5433")),
     "database": os.getenv("DB_NAME", "borsa_db"),       # Change to your database name
@@ -15,7 +15,7 @@ DB_AYARLARI = {
 }
 
 # RabbitMQ Connection Settings (reads from .env)
-RABBITMQ_AYARLARI = {
+RABBITMQ_CONFIG = {
     "host": os.getenv("RABBITMQ_HOST", "localhost"),
     "port": int(os.getenv("RABBITMQ_PORT", "5672")),
     "user": os.getenv("RABBITMQ_USER", "guest"),

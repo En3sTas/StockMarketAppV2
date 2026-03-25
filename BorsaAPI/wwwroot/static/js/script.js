@@ -1,11 +1,11 @@
 
 // -- Global Variables --
-const API_BASE_URL = "/api/hisseler";
+const API_BASE_URL = "/api/market/all";
 
 // -- Portfolio Data (LocalStorage) --
 let MY_PORTFOLIO = JSON.parse(localStorage.getItem('myPortfolio')) || [
-    { sembol: "TUPRS", adet: 22, maliyet: 183.20, target: 220.0, initialStop: 170.0, trailingStop: 170.0, highestPrice: 183.20, strategy: "TREND" },
-    { sembol: "TOASO", adet: 20, maliyet: 245.90, target: 300.0, initialStop: 230.0, trailingStop: 230.0, highestPrice: 245.90, strategy: "TREND" }
+    { symbol: "TUPRS", quantity: 22, cost: 183.20, target: 220.0, initialStop: 170.0, trailingStop: 170.0, highestPrice: 183.20, strategy: "TREND" },
+    { symbol: "TOASO", quantity: 20, cost: 245.90, target: 300.0, initialStop: 230.0, trailingStop: 230.0, highestPrice: 245.90, strategy: "TREND" }
 ];
 
 // -- LocalStorage Helpers --
@@ -17,12 +17,12 @@ function savePortfolio() {
 // -- Add Stock to Portfolio --
 function addToPortfolio(symbol, count, cost) {
     if (!symbol || count <= 0 || cost < 0) {
-        alert("Lütfen geçerli değerler giriniz!");
+        alert("Please enter valid values!");
         return;
     }
 
-    const existing = MY_PORTFOLIO.find(p => p.sembol === symbol);
-    const liveData = globalData.find(d => d.sembol === symbol);
+    const existing = MY_PORTFOLIO.find(p => p.symbol === symbol);
+    const liveData = globalData.find(d => d.symbol === symbol);
 
     // Auto-Calculate Smart Levels
     const levels = calculateSmartLevels(cost, liveData);
@@ -32,22 +32,22 @@ function addToPortfolio(symbol, count, cost) {
 
     if (existing) {
         // Calculate Weighted Average Cost
-        const totalCost = (existing.adet * existing.maliyet) + (count * cost);
-        const totalCount = existing.adet + count;
-        existing.maliyet = totalCost / totalCount;
-        existing.adet = totalCount;
+        const totalCost = (existing.quantity * existing.cost) + (count * cost);
+        const totalCount = existing.quantity + count;
+        existing.cost = totalCost / totalCount;
+        existing.quantity = totalCount;
 
         // Update targets based on new average cost
         existing.initialStop = autoStop;
         existing.trailingStop = autoStop;
         existing.target = autoTarget;
-        existing.highestPrice = existing.maliyet;
+        existing.highestPrice = existing.cost;
         existing.strategy = strategy;
     } else {
         MY_PORTFOLIO.push({
-            sembol: symbol,
-            adet: count,
-            maliyet: cost,
+            symbol: symbol,
+            quantity: count,
+            cost: cost,
             initialStop: parseFloat(autoStop.toFixed(2)),
             trailingStop: parseFloat(autoStop.toFixed(2)),
             target: parseFloat(autoTarget.toFixed(2)),
@@ -62,8 +62,8 @@ function addToPortfolio(symbol, count, cost) {
 
 // -- Remove Stock from Portfolio --
 function removeFromPortfolio(symbol) {
-    if (confirm(`${symbol} hissesini portföyden silmek istediğinize emin misiniz?`)) {
-        MY_PORTFOLIO = MY_PORTFOLIO.filter(p => p.sembol !== symbol);
+    if (confirm(`Are you sure you want to remove ${symbol} from your portfolio?`)) {
+        MY_PORTFOLIO = MY_PORTFOLIO.filter(p => p.symbol !== symbol);
         savePortfolio();
     }
 }
@@ -118,11 +118,11 @@ function switchTab(tabName) {
     if (tabName === 'portfolio') {
         if (portfolioView) portfolioView.classList.remove('hidden');
         if (tabPortfolio) tabPortfolio.className = activeClass;
-        verileriGetir();
+        fetchData();
     } else if (tabName === 'pro') {
         if (proView) proView.classList.remove('hidden');
         if (tabPro) tabPro.className = activeClass + " text-amber-400";
-        verileriGetir();
+        fetchData();
     } else {
         if (marketView) marketView.classList.remove('hidden');
 
@@ -131,24 +131,24 @@ function switchTab(tabName) {
         } else if (tabName === 'all' && tabAll) {
             tabAll.className = activeClass + " text-gray-200";
         }
-        verileriGetir();
+        fetchData();
     }
 }
 
 // -- Data Fetching Logic (API) --
-async function verileriGetir() {
+async function fetchData() {
     const statusDiv = document.getElementById('connectionStatus');
     const messageArea = document.getElementById('messageArea');
     const params = new URLSearchParams();
 
     // Add filter props to params if not in portfolio mode
     if (currentTab !== 'portfolio') {
-        addParam(params, 'minFk', 'minFk'); addParam(params, 'maxFk', 'maxFk');
-        addParam(params, 'minPdDd', 'minPdDd'); addParam(params, 'maxPdDd', 'maxPdDd');
+        addParam(params, 'minPeRatio', 'minFk'); addParam(params, 'maxPeRatio', 'maxFk');
+        addParam(params, 'minPbRatio', 'minPdDd'); addParam(params, 'maxPbRatio', 'maxPdDd');
         addParam(params, 'minRsi', 'minRsi'); addParam(params, 'maxRsi', 'maxRsi');
         addParam(params, 'minMacdHist', 'minMacdHist'); addParam(params, 'maxMacdHist', 'maxMacdHist');
         addParam(params, 'minAdx', 'minAdx'); addParam(params, 'maxAdx', 'maxAdx');
-        addParam(params, 'minHacimOrani', 'minHacim'); addParam(params, 'maxHacimOrani', 'maxHacim');
+        addParam(params, 'minVolumeRatio', 'minHacim'); addParam(params, 'maxVolumeRatio', 'maxHacim');
         addParam(params, 'minDmp', 'minDmp'); addParam(params, 'minDmn', 'minDmn');
         addParam(params, 'signal', 'filterSignal');
     }
@@ -156,13 +156,13 @@ async function verileriGetir() {
     try {
         let url = API_BASE_URL;
         if (currentTab === 'trend') {
-            url = "http://localhost:5158/api/market/trend";
+            url = "/api/market/trend";
         } else if (currentTab === 'all' || currentTab === 'pro') {
-            url = "http://localhost:5158/api/market/all";
+            url = "/api/market/all";
         }
 
         const response = await fetch(`${url}?${params.toString()}`);
-        if (!response.ok) throw new Error("API Hatası");
+        if (!response.ok) throw new Error("API Error");
 
         globalData = await response.json();
 
@@ -182,9 +182,12 @@ async function verileriGetir() {
         renderPortfolio();
 
     } catch (error) {
-        // Error handling masked for brevity
+        console.error("Fetch error:", error);
     }
 }
+
+// Keep backward-compat alias (old function name)
+function verileriGetir() { fetchData(); }
 
 
 // -- Sorting Logic --
@@ -195,7 +198,7 @@ function sortTable(column) {
         currentSort.direction = currentSort.direction === 'asc' ? 'desc' : 'asc';
     } else {
         currentSort.column = column;
-        currentSort.direction = (column === 'sembol' || column === 'signal') ? 'asc' : 'desc';
+        currentSort.direction = (column === 'symbol' || column === 'signal') ? 'asc' : 'desc';
     }
 
     updateSortIcons();
@@ -225,20 +228,20 @@ function updateSortIcons() {
 }
 
 // -- Frontend Filtering --
-function frontendFiltrele(data) {
+function frontendFilter(data) {
     const maxAdx = parseFloat(val('maxAdx')) || 9999;
-    const minHacim = parseFloat(val('minHacim')) || 0;
-    const maxHacim = parseFloat(val('maxHacim')) || 9999;
-    const maxFk = parseFloat(val('maxFk')) || 9999;
-    const maxPdDd = parseFloat(val('maxPdDd')) || 9999;
+    const minVolume = parseFloat(val('minHacim')) || 0;
+    const maxVolume = parseFloat(val('maxHacim')) || 9999;
+    const maxPeRatio = parseFloat(val('maxFk')) || 9999;
+    const maxPbRatio = parseFloat(val('maxPdDd')) || 9999;
     const minScoreEl = document.getElementById('minScoreSlider');
     const minScore = minScoreEl ? (parseFloat(minScoreEl.value) || 0) : 0;
 
     return data.filter(h =>
         h.adx <= maxAdx &&
-        h.hacimOrani >= minHacim && h.hacimOrani <= maxHacim &&
-        h.fk <= maxFk &&
-        h.pdDd <= maxPdDd &&
+        h.volumeRatio >= minVolume && h.volumeRatio <= maxVolume &&
+        h.peRatio <= maxPeRatio &&
+        h.pbRatio <= maxPbRatio &&
         (h.score || 0) >= minScore
     );
 }
@@ -263,7 +266,7 @@ function renderMarketTable(data) {
     tbody.innerHTML = '';
 
     if (data.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="16" class="p-12 text-center text-gray-500">Aradığınız kriterlere uygun hisse bulunamadı.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="16" class="p-12 text-center text-gray-500">No stocks match the selected criteria.</td></tr>';
         return;
     }
 
@@ -275,15 +278,15 @@ function renderMarketTable(data) {
 
             let volText = 'text-gray-500';
             let volIcon = 'fa-battery-quarter text-gray-700';
-            if (h.hacimOrani > 2.0) { volText = 'text-orange-400 font-bold'; volIcon = 'fa-fire-flame-curved animate-pulse text-orange-500'; }
-            else if (h.hacimOrani > 1.2) { volText = 'text-emerald-300'; volIcon = 'fa-arrow-trend-up text-emerald-500'; }
+            if (h.volumeRatio > 2.0) { volText = 'text-orange-400 font-bold'; volIcon = 'fa-fire-flame-curved animate-pulse text-orange-500'; }
+            else if (h.volumeRatio > 1.2) { volText = 'text-emerald-300'; volIcon = 'fa-arrow-trend-up text-emerald-500'; }
 
             // Signal Badge
             let signalBadge = '';
             switch (h.signal) {
-                case 'STRONG_BUY': signalBadge = '<span class="bg-gradient-to-r from-emerald-600 to-green-500 text-white px-3 py-1 rounded-full text-[10px] font-bold shadow-lg shadow-emerald-900/40 animate-pulse"><i class="fa-solid fa-rocket mr-1"></i> GÜÇLÜ AL</span>'; break;
-                case 'BUY': signalBadge = '<span class="bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 px-2 py-1 rounded text-[10px] font-bold">✅ AL</span>'; break;
-                case 'WATCH': signalBadge = '<span class="bg-yellow-500/10 text-yellow-400 border border-yellow-500/30 px-2 py-1 rounded text-[10px] font-bold">👀 İZLE</span>'; break;
+                case 'STRONG_BUY': signalBadge = '<span class="bg-gradient-to-r from-emerald-600 to-green-500 text-white px-3 py-1 rounded-full text-[10px] font-bold shadow-lg shadow-emerald-900/40 animate-pulse"><i class="fa-solid fa-rocket mr-1"></i> STRONG BUY</span>'; break;
+                case 'BUY': signalBadge = '<span class="bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 px-2 py-1 rounded text-[10px] font-bold">✅ BUY</span>'; break;
+                case 'WATCH': signalBadge = '<span class="bg-yellow-500/10 text-yellow-400 border border-yellow-500/30 px-2 py-1 rounded text-[10px] font-bold">👀 WATCH</span>'; break;
                 default: signalBadge = '<span class="text-gray-600 text-[10px]">NO TRADE</span>';
             }
 
@@ -294,30 +297,30 @@ function renderMarketTable(data) {
             else if (h.score >= 30) scoreColor = 'text-orange-400';
             else scoreColor = 'text-red-400';
 
-            const tarih = new Date(h.sonGuncelleme).toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' });
+            const timeStr = new Date(h.lastUpdated).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
 
             const row = `
-            <tr id="row-${h.sembol}" class="hover:bg-gray-800/40 transition border-b border-gray-800/30 group">
-                <td class="p-4 font-bold text-white sticky left-0 bg-[#0b0f19] group-hover:bg-gray-800/40 z-10 border-r border-gray-800/50">${h.sembol}</td>
+            <tr id="row-${h.symbol}" class="hover:bg-gray-800/40 transition border-b border-gray-800/30 group">
+                <td class="p-4 font-bold text-white sticky left-0 bg-[#0b0f19] group-hover:bg-gray-800/40 z-10 border-r border-gray-800/50">${h.symbol}</td>
                 
                 <td class="p-4 text-blue-300 font-mono text-base tracking-tight cell-fiyat">
-                    ${h.fiyat.toFixed(2)} ₺
-                    ${getDiffBadge(h.fiyat, h.fiyatOnceki)}
+                    ${h.price.toFixed(2)} ₺
+                    ${getDiffBadge(h.price, h.pricePrev)}
                 </td>
                 
-                <td class="p-4 font-mono ${h.fiyat > h.sma50 ? 'text-emerald-300/90' : 'text-gray-600'}">${h.sma50.toFixed(2)}</td>
-                <td class="p-4 font-mono ${h.fiyat > h.sma200 ? 'text-yellow-300/90' : 'text-gray-600'}">${h.sma200.toFixed(2)}</td>
+                <td class="p-4 font-mono ${h.price > h.sma50 ? 'text-emerald-300/90' : 'text-gray-600'}">${h.sma50.toFixed(2)}</td>
+                <td class="p-4 font-mono ${h.price > h.sma200 ? 'text-yellow-300/90' : 'text-gray-600'}">${h.sma200.toFixed(2)}</td>
                 
                 <td class="p-4 font-mono ${rsiClass} cell-rsi">
                     ${h.rsi.toFixed(2)}
-                    ${getDiffBadge(h.rsi, h.rsiOnceki)}
+                    ${getDiffBadge(h.rsi, h.rsiPrev)}
                 </td>
                 
                 <td class="p-4 text-center bg-blue-900/5">
                     <div class="flex flex-col items-center">
                         <span class="${adxClass} text-sm flex flex-col items-center">
                             ${h.adx.toFixed(2)}
-                            ${getDiffBadge(h.adx, h.adxOnceki)}
+                            ${getDiffBadge(h.adx, h.adxPrev)}
                         </span>
                         <div class="text-[10px] mt-1 flex gap-2 font-mono bg-gray-900/80 px-2 py-0.5 rounded border border-gray-700/50">
                             <span class="text-emerald-500" title="+DI">+${h.dmp.toFixed(1)}</span>
@@ -330,7 +333,7 @@ function renderMarketTable(data) {
                 <td class="p-4 text-center">
                         <div class="flex items-center justify-center gap-2 bg-gray-900/30 py-1.5 px-3 rounded-lg border border-gray-800/50">
                         <i class="fa-solid ${volIcon}"></i>
-                        <span class="${volText} font-mono">${h.hacimOrani.toFixed(2)}x</span>
+                        <span class="${volText} font-mono">${h.volumeRatio.toFixed(2)}x</span>
                     </div>
                 </td>
 
@@ -342,8 +345,8 @@ function renderMarketTable(data) {
                     </div>
                 </td>
 
-                <td class="p-4 text-gray-400 font-mono">${h.fk.toFixed(2)}</td>
-                <td class="p-4 text-gray-400 font-mono">${h.pdDd.toFixed(2)}</td>
+                <td class="p-4 text-gray-400 font-mono">${h.peRatio.toFixed(2)}</td>
+                <td class="p-4 text-gray-400 font-mono">${h.pbRatio.toFixed(2)}</td>
 
                 <!-- Trading Signal Cells -->
                 <td class="p-4 text-center cell-signal">${signalBadge}</td>
@@ -358,11 +361,11 @@ function renderMarketTable(data) {
                 <td class="p-4 text-right font-mono text-red-300 text-xs">${(h.stopPrice || 0).toFixed(2)} ₺</td>
                 <td class="p-4 text-right font-mono text-emerald-300 text-xs">${(h.targetPrice || 0).toFixed(2)} ₺</td>
 
-                <td class="p-4 text-xs text-gray-600 font-mono">${tarih}</td>
+                <td class="p-4 text-xs text-gray-600 font-mono">${timeStr}</td>
             </tr>`;
             tbody.innerHTML += row;
         } catch (err) {
-            console.error("Rendering Error for stock:", h, err);
+            console.error("Rendering error for stock:", h, err);
         }
     });
 }
@@ -375,10 +378,10 @@ function renderPortfolio() {
     let totalVal = 0, totalCost = 0;
 
     MY_PORTFOLIO.forEach(item => {
-        const liveData = globalData.find(d => d.sembol === item.sembol || d.sembol.includes(item.sembol));
-        let currentPrice = liveData ? liveData.fiyat : 0;
-        let totalValue = currentPrice * item.adet;
-        let costValue = item.maliyet * item.adet;
+        const liveData = globalData.find(d => d.symbol === item.symbol || d.symbol.includes(item.symbol));
+        let currentPrice = liveData ? liveData.price : 0;
+        let totalValue = currentPrice * item.quantity;
+        let costValue = item.cost * item.quantity;
         let pnl = totalValue - costValue;
         let pnlPercent = costValue > 0 ? (pnl / costValue) * 100 : 0;
 
@@ -392,12 +395,12 @@ function renderPortfolio() {
             let needsUpdate = false;
 
             if (!item.target || !item.initialStop || !item.trailingStop || !item.strategy) {
-                const levels = calculateSmartLevels(item.maliyet, liveData);
+                const levels = calculateSmartLevels(item.cost, liveData);
                 item.target = levels.target;
                 item.initialStop = levels.initialStop;
                 item.trailingStop = item.trailingStop || levels.initialStop;
                 item.strategy = levels.strategy;
-                item.highestPrice = item.highestPrice || item.maliyet;
+                item.highestPrice = item.highestPrice || item.cost;
                 needsUpdate = true;
             }
 
@@ -419,24 +422,24 @@ function renderPortfolio() {
 
         if (liveData && item.target && item.trailingStop) {
             if (currentPrice >= item.target) {
-                signalBadge = '<span class="bg-red-500 text-white px-2 py-1 rounded text-xs font-bold animate-pulse">🎯 HEDEF GELDİ (SAT)</span>';
+                signalBadge = '<span class="bg-red-500 text-white px-2 py-1 rounded text-xs font-bold animate-pulse">🎯 TARGET HIT (SELL)</span>';
             } else if (currentPrice <= item.trailingStop) {
-                signalBadge = '<span class="bg-red-500 text-white px-2 py-1 rounded text-xs font-bold">🛑 STOP OLDU (SAT)</span>';
+                signalBadge = '<span class="bg-red-500 text-white px-2 py-1 rounded text-xs font-bold">🛑 STOP HIT (SELL)</span>';
             } else {
                 const stopDistance = ((currentPrice - item.trailingStop) / currentPrice * 100).toFixed(1);
-                signalBadge = `<span class="text-emerald-500 text-xs font-bold">✅ TUT <span class="text-gray-500">(Stop: -${stopDistance}%)</span></span>`;
+                signalBadge = `<span class="text-emerald-500 text-xs font-bold">✅ HOLD <span class="text-gray-500">(Stop: -${stopDistance}%)</span></span>`;
             }
         }
         else if (liveData) {
-            if (liveData.rsi < 30) signalBadge = '<span class="bg-emerald-500 text-black px-2 py-1 rounded text-xs font-bold">DİP FIRSATI</span>';
-            else signalBadge = '<span class="text-gray-500 text-xs">Bekle</span>';
+            if (liveData.rsi < 30) signalBadge = '<span class="bg-emerald-500 text-black px-2 py-1 rounded text-xs font-bold">DIP OPPORTUNITY</span>';
+            else signalBadge = '<span class="text-gray-500 text-xs">Wait</span>';
         }
 
         const row = `
             <tr class="hover:bg-gray-800/40 border-b border-gray-800/30 ${bgClass} group">
-                <td class="p-4 font-bold text-white">${item.sembol}</td>
-                <td class="p-4 text-right font-mono text-gray-300">${item.adet}</td>
-                <td class="p-4 text-right font-mono text-gray-400">${item.maliyet.toFixed(2)} ₺</td>
+                <td class="p-4 font-bold text-white">${item.symbol}</td>
+                <td class="p-4 text-right font-mono text-gray-300">${item.quantity}</td>
+                <td class="p-4 text-right font-mono text-gray-400">${item.cost.toFixed(2)} ₺</td>
                 <td class="p-4 text-right font-mono text-blue-300 font-bold">${currentPrice > 0 ? currentPrice.toFixed(2) + ' ₺' : '...'}</td>
                 <td class="p-4 text-right font-mono text-white font-bold">${totalValue.toFixed(2)} ₺</td>
                 <td class="p-4 text-right font-mono ${pnlClass}">${pnl > 0 ? '+' : ''}${pnl.toFixed(2)} ₺</td>
@@ -444,11 +447,11 @@ function renderPortfolio() {
                 <td class="p-4 text-center text-xs font-mono text-gray-400">
                     <div>T: <span class="text-emerald-300">${item.target ? item.target.toFixed(2) : '-'}</span></div>
                     <div>S: <span class="text-red-300">${item.trailingStop ? item.trailingStop.toFixed(2) : '-'}</span></div>
-                    ${item.highestPrice && item.highestPrice > item.maliyet ? `<div class="text-[9px] text-blue-400">Peak: ${item.highestPrice.toFixed(2)}</div>` : ''}
+                    ${item.highestPrice && item.highestPrice > item.cost ? `<div class="text-[9px] text-blue-400">Peak: ${item.highestPrice.toFixed(2)}</div>` : ''}
                 </td>
                 <td class="p-4 text-center">${signalBadge}</td>
                 <td class="p-4 text-center">
-                    <button onclick="removeFromPortfolio('${item.sembol}')" class="text-gray-600 hover:text-red-500 transition opacity-0 group-hover:opacity-100">
+                    <button onclick="removeFromPortfolio('${item.symbol}')" class="text-gray-600 hover:text-red-500 transition opacity-0 group-hover:opacity-100">
                         <i class="fa-solid fa-trash-can"></i>
                     </button>
                 </td>
@@ -460,7 +463,7 @@ function renderPortfolio() {
     const totalPnLPercent = totalCost > 0 ? (totalPnL / totalCost) * 100 : 0;
 
     const totalBalanceEl = document.getElementById('totalBalance');
-    if (totalBalanceEl) totalBalanceEl.innerText = `₺${totalVal.toLocaleString('tr-TR', { minimumFractionDigits: 2 })}`;
+    if (totalBalanceEl) totalBalanceEl.innerText = `₺${totalVal.toLocaleString('en-US', { minimumFractionDigits: 2 })}`;
 
     const stockCountEl = document.getElementById('stockCount');
     if (stockCountEl) stockCountEl.innerText = MY_PORTFOLIO.length;
@@ -470,7 +473,7 @@ function renderPortfolio() {
     const pnlIcon = document.getElementById('pnlIcon');
 
     if (pnlEl && pnlPerEl && pnlIcon) {
-        pnlEl.innerText = `${totalPnL > 0 ? '+' : ''}₺${totalPnL.toLocaleString('tr-TR', { minimumFractionDigits: 2 })}`;
+        pnlEl.innerText = `${totalPnL > 0 ? '+' : ''}₺${totalPnL.toLocaleString('en-US', { minimumFractionDigits: 2 })}`;
         pnlPerEl.innerText = `%${totalPnLPercent.toFixed(2)}`;
 
         if (totalPnL >= 0) {
@@ -485,32 +488,25 @@ function renderPortfolio() {
     }
 }
 
-// Yardımcı Fonksiyonlar
+// -- Utility Helpers --
 function addParam(params, name, id) { const el = document.getElementById(id); if (el && el.value) params.append(name, el.value); }
 function val(id) { return document.getElementById(id) ? document.getElementById(id).value : null; }
-function temizle() { document.querySelectorAll('input').forEach(i => i.value = ''); verileriGetir(); }
+function temizle() { document.querySelectorAll('input').forEach(i => i.value = ''); fetchData(); }
 
-// BAŞLANGIÇ & OTOMATİK YENİLEME MANTIĞI
-// -------------------------------------
-
-// 1. Sayfa ilk açıldığında veriyi çek
-window.onload = verileriGetir;
-
-// 2. Her 30 saniyede bir kontrol et ve güncelle
-
+// -- Initialization --
+window.onload = fetchData;
 
 
 // -- Helper: Calculate Smart Target/Stop --
 function calculateSmartLevels(cost, liveData) {
-    let stop = cost * 0.95; // Default 5%
-    let target = cost * 1.15; // Default 15%
-    let strategy = "TREND"; // Default strategy
+    let stop = cost * 0.95;   // Default 5%
+    let target = cost * 1.15;   // Default 15%
+    let strategy = "TREND";       // Default strategy
 
     if (liveData && liveData.atr > 0) {
         const atr = liveData.atr;
         strategy = (liveData.strategy || "TREND").toUpperCase();
 
-        // -- TREND Strategy --
         // Stop: 3.0 ATR
         stop = cost - (3.0 * atr);
 
@@ -545,10 +541,8 @@ function updateTrailingStop(portfolioItem, currentPrice, liveData) {
         return portfolioItem.trailingStop;
     }
 
-    const strategy = portfolioItem.strategy || "TREND";
     const atr = liveData.atr;
-
-    let atrMultiplier = 3.0; // TREND
+    const atrMultiplier = 3.0;   // TREND
 
     // Update highest price seen
     if (currentPrice > portfolioItem.highestPrice) {
@@ -557,8 +551,6 @@ function updateTrailingStop(portfolioItem, currentPrice, liveData) {
 
     // Calculate new stop level
     const newStop = portfolioItem.highestPrice - (atrMultiplier * atr);
-
-    // Trailing: Only move up
     const updatedStop = Math.max(portfolioItem.initialStop, newStop);
 
     portfolioItem.trailingStop = parseFloat(updatedStop.toFixed(2));
@@ -575,22 +567,22 @@ const connection = new signalR.HubConnectionBuilder()
 connection.start()
     .then(() => {
         console.log("🟢 SignalR Connected!");
-        document.getElementById('connectionStatus').innerHTML = '<span class="w-2 h-2 rounded-full bg-emerald-500"></span> Canlı (WebSocket)';
+        document.getElementById('connectionStatus').innerHTML = '<span class="w-2 h-2 rounded-full bg-emerald-500"></span> Live (WebSocket)';
         document.getElementById('connectionStatus').className = "flex items-center gap-2 text-xs font-mono text-emerald-400 bg-emerald-900/20 px-3 py-1.5 rounded-full border border-emerald-900";
     })
     .catch(err => console.error("SignalR Connection Error: ", err));
 
 connection.on("ReceiveStockUpdate", (updatedStock) => {
     // 1. Update Global Data
-    const index = globalData.findIndex(s => s.sembol === updatedStock.sembol);
+    const index = globalData.findIndex(s => s.symbol === updatedStock.symbol);
     if (index !== -1) {
         globalData[index] = updatedStock;
     }
 
     // 2. Update Portfolio (Real-Time Trailing Stop)
-    const portfolioItem = MY_PORTFOLIO.find(p => p.sembol === updatedStock.sembol);
+    const portfolioItem = MY_PORTFOLIO.find(p => p.symbol === updatedStock.symbol);
     if (portfolioItem) {
-        updateTrailingStop(portfolioItem, updatedStock.fiyat, updatedStock);
+        updateTrailingStop(portfolioItem, updatedStock.price, updatedStock);
 
         if (currentTab === 'portfolio') {
             renderPortfolio();
@@ -601,18 +593,18 @@ connection.on("ReceiveStockUpdate", (updatedStock) => {
 
     // 3. Update Market Table Row (Smart Patching)
     if (currentTab !== 'portfolio') {
-        const row = document.getElementById(`row-${updatedStock.sembol}`);
+        const row = document.getElementById(`row-${updatedStock.symbol}`);
         if (row) {
             // Flash Effect
-            const isPositive = updatedStock.fiyat > updatedStock.fiyatOnceki;
+            const isPositive = updatedStock.price > updatedStock.pricePrev;
             const flashClass = isPositive ? 'bg-emerald-900/40' : 'bg-red-900/40';
 
             row.classList.add(flashClass);
             setTimeout(() => row.classList.remove(flashClass), 500);
 
             // Update Cells
-            updateCell(row, '.cell-fiyat', `${updatedStock.fiyat.toFixed(2)} ₺ ${getDiffBadge(updatedStock.fiyat, updatedStock.fiyatOnceki)}`);
-            updateCell(row, '.cell-rsi', `${updatedStock.rsi.toFixed(2)} ${getDiffBadge(updatedStock.rsi, updatedStock.rsiOnceki)}`);
+            updateCell(row, '.cell-fiyat', `${updatedStock.price.toFixed(2)} ₺ ${getDiffBadge(updatedStock.price, updatedStock.pricePrev)}`);
+            updateCell(row, '.cell-rsi', `${updatedStock.rsi.toFixed(2)} ${getDiffBadge(updatedStock.rsi, updatedStock.rsiPrev)}`);
             updateCell(row, '.cell-score', updatedStock.score);
 
             // Update Score Bar
@@ -636,9 +628,9 @@ function updateCell(row, selector, content) {
 
 function getSignalBadge(signal) {
     switch (signal) {
-        case 'STRONG_BUY': return '<span class="bg-gradient-to-r from-emerald-600 to-green-500 text-white px-3 py-1 rounded-full text-[10px] font-bold shadow-lg shadow-emerald-900/40 animate-pulse"><i class="fa-solid fa-rocket mr-1"></i> GÜÇLÜ AL</span>';
-        case 'BUY': return '<span class="bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 px-2 py-1 rounded text-[10px] font-bold">✅ AL</span>';
-        case 'WATCH': return '<span class="bg-yellow-500/10 text-yellow-400 border border-yellow-500/30 px-2 py-1 rounded text-[10px] font-bold">👀 İZLE</span>';
+        case 'STRONG_BUY': return '<span class="bg-gradient-to-r from-emerald-600 to-green-500 text-white px-3 py-1 rounded-full text-[10px] font-bold shadow-lg shadow-emerald-900/40 animate-pulse"><i class="fa-solid fa-rocket mr-1"></i> STRONG BUY</span>';
+        case 'BUY': return '<span class="bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 px-2 py-1 rounded text-[10px] font-bold">✅ BUY</span>';
+        case 'WATCH': return '<span class="bg-yellow-500/10 text-yellow-400 border border-yellow-500/30 px-2 py-1 rounded text-[10px] font-bold">👀 WATCH</span>';
         default: return '<span class="text-gray-600 text-[10px]">NO TRADE</span>';
     }
 }
@@ -722,17 +714,17 @@ function buildSmartCard(h, accentClass, borderClass) {
             <div class="h-full ${unifiedScore >= 75 ? 'bg-emerald-500' : (unifiedScore >= 50 ? 'bg-yellow-500' : 'bg-red-500')}" style="width:${unifiedScore}%"></div>
         </div>`;
 
-    const portfolio_warning = MY_PORTFOLIO.some(p => p.sembol === h.sembol) && hasDanger
-        ? `<div class="mt-2 text-[10px] bg-red-500/10 text-red-400 border border-red-500/30 rounded px-2 py-1 font-bold">⚠️ Portföyünüzde var — dikkat!</div>`
+    const portfolio_warning = MY_PORTFOLIO.some(p => p.symbol === h.symbol) && hasDanger
+        ? `<div class="mt-2 text-[10px] bg-red-500/10 text-red-400 border border-red-500/30 rounded px-2 py-1 font-bold">⚠️ In your portfolio — caution!</div>`
         : '';
 
     return `
     <div class="glass rounded-xl p-5 border ${borderClass} hover:scale-[1.01] transition-transform relative">
         <div class="flex justify-between items-start mb-3">
             <div>
-                <span class="text-white font-black text-xl tracking-wide">${h.sembol}</span>
+                <span class="text-white font-black text-xl tracking-wide">${h.symbol}</span>
                 <div class="flex items-center gap-2 mt-1">
-                    <span class="text-blue-300 font-mono text-sm">${(h.fiyat || 0).toFixed(2)} ₺</span>
+                    <span class="text-blue-300 font-mono text-sm">${(h.price || 0).toFixed(2)} ₺</span>
                     ${getStrategyBadge(h.mainStrategy)}
                 </div>
             </div>
@@ -750,19 +742,19 @@ function buildSmartCard(h, accentClass, borderClass) {
                     Stop: <span class="text-red-300 font-mono">${(h.stopPrice || 0).toFixed(2)} ₺</span>
                 </div>
                 <div class="text-[10px] text-gray-500">
-                    Hedef: <span class="text-emerald-300 font-mono">${(h.targetPrice || 0).toFixed(2)} ₺</span>
+                    Target: <span class="text-emerald-300 font-mono">${(h.targetPrice || 0).toFixed(2)} ₺</span>
                 </div>
             </div>
         </div>
 
         <div class="flex flex-wrap mt-3">
-            ${tagsHtml || '<span class="text-gray-700 text-[10px]">Tag yok</span>'}
+            ${tagsHtml || '<span class="text-gray-700 text-[10px]">No tags</span>'}
         </div>
         ${portfolio_warning}
 
         <button onclick="openAddModal()"
             class="mt-3 w-full bg-blue-600/20 hover:bg-blue-600/40 text-blue-300 border border-blue-600/30 py-1.5 rounded text-xs font-semibold transition flex items-center justify-center gap-1">
-            <i class="fa-solid fa-plus"></i> Portföye Ekle
+            <i class="fa-solid fa-plus"></i> Add to Portfolio
         </button>
     </div>`;
 }
@@ -789,7 +781,6 @@ function renderSmartPicks(data) {
     }
 
     // ── Section classification ──
-    const DANGER = DANGER_TAGS_FE;
     const avoidList = [];
     const topList = [];
     const watchList = [];
@@ -798,7 +789,7 @@ function renderSmartPicks(data) {
         const tags = h.tags || [];
         const unified = h.unifiedScore || 0;
         const conviction = h.conviction || 'BRONZE';
-        const hasDanger = DANGER.some(d => tags.some(t => t.includes(d)));
+        const hasDanger = DANGER_TAGS_FE.some(d => tags.some(t => t.includes(d)));
 
         if (hasDanger) {
             avoidList.push(h);
@@ -822,15 +813,15 @@ function renderSmartPicks(data) {
     // ── Render cards ──
     topGrid.innerHTML = topList.length
         ? topList.map(h => buildSmartCard(h, 'border-amber-500/30', 'border-amber-500/20')).join('')
-        : '<p class="text-gray-600 text-sm col-span-3 py-8 text-center">Bugün kriterleri karşılayan hisse yok. Fırsatı bekleyin.</p>';
+        : '<p class="text-gray-600 text-sm col-span-3 py-8 text-center">No stocks meet the criteria today. Wait for an opportunity.</p>';
 
     watchGrid.innerHTML = watchList.length
         ? watchList.map(h => buildSmartCard(h, 'border-blue-500/30', 'border-blue-500/20')).join('')
-        : '<p class="text-gray-600 text-sm col-span-3 py-8 text-center">İzlenecek hisse bulunmuyor.</p>';
+        : '<p class="text-gray-600 text-sm col-span-3 py-8 text-center">No stocks on the watchlist.</p>';
 
     avoidGrid.innerHTML = avoidList.length
         ? avoidList.map(h => buildSmartCard(h, 'border-red-500/30', 'border-red-500/30')).join('')
-        : '<p class="text-gray-600 text-sm col-span-3 py-8 text-center">✅ Tehlikeli hisse yok — piyasa temiz görünüyor.</p>';
+        : '<p class="text-gray-600 text-sm col-span-3 py-8 text-center">✅ No risky stocks — market looks clean.</p>';
 }
 
 // Keep backward-compat alias (SignalR path)

@@ -1,0 +1,35 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.venv/
+env/
+venv/
+src/__pycache__/
+
+# C# / .NET (not needed for Python image, but avoids bloat if building from root)
+BorsaAPI/bin/
+BorsaAPI/obj/
+BorsaAPI/.vs/
+
+# Sensitive / local-only
+.env
+.env.docker
+
+# Data files (large, not needed in container)
+data/
+*.parquet
+*.csv
+*.h5
+*.xlsx
+
+# IDE / OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# Git
+.git/
+.gitignore

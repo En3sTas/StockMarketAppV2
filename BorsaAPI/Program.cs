@@ -6,17 +6,17 @@ using Microsoft.OpenApi.Models;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// 1. Services Configuration
+// ── Services ──────────────────────────────────────────────────────────────────
 builder.Services.AddSignalR();
 
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowAll", policy =>
     {
-        policy.SetIsOriginAllowed(origin => true) 
+        policy.SetIsOriginAllowed(origin => true)
               .AllowAnyMethod()
               .AllowAnyHeader()
-              .AllowCredentials(); 
+              .AllowCredentials();
     });
 });
 
@@ -29,34 +29,34 @@ builder.Services.AddSwaggerGen(c =>
 });
 
 // Dependency Injection
-builder.Services.AddScoped<IHisseRepository, HisseRepository>();
-builder.Services.AddScoped<IHisseService, HisseService>();
+builder.Services.AddScoped<IStockRepository, StockRepository>();
+builder.Services.AddScoped<IStockService, StockService>();
 builder.Services.AddHostedService<RabbitMQConsumer>();
 
 var app = builder.Build();
 
-// 2. HTTP Request Pipeline
+// ── HTTP Pipeline ─────────────────────────────────────────────────────────────
 app.UseCors("AllowAll");
 
-if (app.Environment.IsDevelopment())
+// Swagger: available in all environments (Docker runs HTTP-only)
+app.UseSwagger();
+app.UseSwaggerUI(c =>
 {
-    app.UseSwagger();
-    app.UseSwaggerUI(c =>
-    {
-        c.SwaggerEndpoint("/swagger/v1/swagger.json", "BorsaAPI v1");
-    });
-}
+    c.SwaggerEndpoint("/swagger/v1/swagger.json", "BorsaAPI v1");
+});
 
-app.UseHttpsRedirection();
+// HTTPS termination is handled by the reverse proxy / load balancer upstream.
+// Do NOT use UseHttpsRedirection() in a Docker HTTP-only container.
+
 app.UseAuthorization();
 
-// Static Files (for Frontend hosting)
-app.UseDefaultFiles(); 
-app.UseStaticFiles();  
+// Static Files (Frontend hosting — wwwroot)
+app.UseDefaultFiles();
+app.UseStaticFiles();
 
 app.MapControllers();
 
-// SignalR Endpoints
+// SignalR Hub
 app.MapHub<BorsaHub>("/hubs/borsa");
 
 app.Run();

@@ -1,11 +1,11 @@
 namespace BorsaAPI.Models
 {
-    public class HisselerFilterDto
+    public class StockFilterDto
     {
-        public decimal? MaxFk { get; set; }
-        public decimal? MinFk { get; set; }
-        public decimal? MaxPdDd { get; set; }
-        public decimal? MinPdDd { get; set; }
+        public decimal? MaxPeRatio { get; set; }
+        public decimal? MinPeRatio { get; set; }
+        public decimal? MaxPbRatio { get; set; }
+        public decimal? MinPbRatio { get; set; }
         public decimal? MaxRsi { get; set; }
         public decimal? MinRsi { get; set; }
         public decimal? MaxMacdLine { get; set; }
@@ -20,8 +20,8 @@ namespace BorsaAPI.Models
         public decimal? MinDmp { get; set; }
         public decimal? MaxDmn { get; set; }
         public decimal? MinDmn { get; set; }
-        public decimal? MaxHacimOrani { get; set; }
-        public decimal? MinHacimOrani { get; set; }
+        public decimal? MaxVolumeRatio { get; set; }
+        public decimal? MinVolumeRatio { get; set; }
         public string? Signal { get; set; }
         public string? Strategy { get; set; }
         public int? MinScore { get; set; }

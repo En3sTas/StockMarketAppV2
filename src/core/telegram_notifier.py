@@ -23,63 +23,64 @@ REGIME_EMOJI = {
     "BEAR":     "🐻",
 }
 
+
 # ──────────────────────────────────────────────────────────────
-# Bildirim Türü 1: Trend Hunter Sinyali
-# RSI, Score, ADX odaklı — Trend Engine çıktısı
+# Notification Type 1: Trend Hunter Signal
+# RSI, Score, ADX focused — Trend Engine output
 # ──────────────────────────────────────────────────────────────
 def send_trend_notification(payload: dict) -> bool:
     """
-    Trend Hunter bazlı bildirim.
-    Gönderilecek bilgiler: sinyal, score, RSI, ADX, fiyat.
+    Sends a Trend Hunter signal notification via Telegram.
+    Payload fields: Signal, Score, Rsi, Adx, MacdHist, Price, StopPrice, TargetPrice, LastUpdated.
     """
     if not TELEGRAM_BOT_TOKEN or not TELEGRAM_CHAT_ID:
-        print("⚠️ Telegram token/chat_id eksik, bildirim gönderilmedi.")
+        print("⚠️ Telegram token/chat_id missing — notification not sent.")
         return False
 
-    sembol      = payload.get("Sembol", "?")
-    signal      = payload.get("Signal", "NO_TRADE")
-    score       = payload.get("Score", 0)
-    rsi         = payload.get("Rsi", 0)
-    adx         = payload.get("Adx", 0)
-    macd_hist   = payload.get("MacdHist", 0)
-    fiyat       = payload.get("Fiyat", 0)
-    stop_price  = payload.get("StopPrice", 0)
-    target_price= payload.get("TargetPrice", 0)
-    tarih       = payload.get("SonGuncelleme", "")[:16]
-    sig_emoji   = SIGNAL_EMOJI.get(signal, "📊")
+    symbol       = payload.get("Symbol", "?")
+    signal       = payload.get("Signal", "NO_TRADE")
+    score        = payload.get("Score", 0)
+    rsi          = payload.get("Rsi", 0)
+    adx          = payload.get("Adx", 0)
+    macd_hist    = payload.get("MacdHist", 0)
+    price        = payload.get("Price", 0)
+    stop_price   = payload.get("StopPrice", 0)
+    target_price = payload.get("TargetPrice", 0)
+    date_str     = payload.get("LastUpdated", "")[:16]
+    sig_emoji    = SIGNAL_EMOJI.get(signal, "📊")
 
     text = (
-        f"{sig_emoji} *{sembol}* — Trend Hunter Sinyali\n"
+        f"{sig_emoji} *{symbol}* — Trend Hunter Signal\n"
         f"━━━━━━━━━━━━━━━━━━━━\n"
-        f"🔔 Sinyal: *{signal}*\n"
+        f"🔔 Signal: *{signal}*\n"
         f"⭐ Score: `{score}`\n"
         f"📉 RSI: `{rsi:.1f}`\n"
         f"📊 ADX: `{adx:.1f}`\n"
         f"〰️ MACD Hist: `{macd_hist:.4f}`\n"
         f"━━━━━━━━━━━━━━━━━━━━\n"
-        f"💰 Fiyat: `{fiyat:.2f} TL`\n"
-        f"🎯 Hedef: `{target_price:.2f} TL`\n"
+        f"💰 Price: `{price:.2f} TL`\n"
+        f"🎯 Target: `{target_price:.2f} TL`\n"
         f"🛑 Stop: `{stop_price:.2f} TL`\n"
-        f"📅 {tarih}"
+        f"📅 {date_str}"
     )
     return _send(text)
 
 
 # ──────────────────────────────────────────────────────────────
-# Bildirim Türü 2: Smart Picks Sinyali
+# Notification Type 2: Smart Picks Signal
 # Conviction (Diamond/Gold/Silver/Bronze), UnifiedScore,
-# MarketRegime, Tags + Trend Hunter özeti dahil
+# MarketRegime, Tags + Trend Hunter summary
 # ──────────────────────────────────────────────────────────────
 def send_smart_picks_notification(payload: dict) -> bool:
     """
-    Smart Picks (Pro Engine) bazlı bildirim.
-    Gönderilecek bilgiler: conviction, unified_score, regime, tags + trend bilgileri.
+    Sends a Smart Picks (Pro Engine) signal notification via Telegram.
+    Payload fields: conviction, unified_score, regime, tags + trend fields.
     """
     if not TELEGRAM_BOT_TOKEN or not TELEGRAM_CHAT_ID:
-        print("⚠️ Telegram token/chat_id eksik, bildirim gönderilmedi.")
+        print("⚠️ Telegram token/chat_id missing — notification not sent.")
         return False
 
-    sembol        = payload.get("Sembol", "?")
+    symbol        = payload.get("Symbol", "?")
     signal        = payload.get("Signal", "NO_TRADE")
     unified_score = payload.get("UnifiedScore", 0)
     conviction    = payload.get("Conviction", "BRONZE")
@@ -89,52 +90,51 @@ def send_smart_picks_notification(payload: dict) -> bool:
     score         = payload.get("Score", 0)
     rsi           = payload.get("Rsi", 0)
     adx           = payload.get("Adx", 0)
-    fiyat         = payload.get("Fiyat", 0)
+    price         = payload.get("Price", 0)
     stop_price    = payload.get("StopPrice", 0)
     target_price  = payload.get("TargetPrice", 0)
-    tarih         = payload.get("SonGuncelleme", "")[:16]
+    date_str      = payload.get("LastUpdated", "")[:16]
 
-    sig_emoji   = SIGNAL_EMOJI.get(signal, "📊")
-    conv_emoji  = CONVICTION_EMOJI.get(conviction, "🥉")
-    reg_emoji   = REGIME_EMOJI.get(market_regime, "↔️")
+    sig_emoji  = SIGNAL_EMOJI.get(signal, "📊")
+    conv_emoji = CONVICTION_EMOJI.get(conviction, "🥉")
+    reg_emoji  = REGIME_EMOJI.get(market_regime, "↔️")
 
-    # Kategori belirleme (Top Picks / WatchList / Avoid)
     if unified_score >= 80 and conviction in ("DIAMOND", "GOLD"):
-        kategori = "🔝 TOP PICKS"
+        category = "🔝 TOP PICKS"
     elif unified_score >= 65:
-        kategori = "👁 WATCHLIST"
+        category = "👁 WATCHLIST"
     else:
-        kategori = "⚠️ AVOID"
+        category = "⚠️ AVOID"
 
     tags_str = ", ".join(tags) if tags else "—"
 
     text = (
-        f"{sig_emoji} *{sembol}* — Smart Picks\n"
+        f"{sig_emoji} *{symbol}* — Smart Picks\n"
         f"━━━━━━━━━━━━━━━━━━━━\n"
-        f"📂 Kategori: *{kategori}*\n"
+        f"📂 Category: *{category}*\n"
         f"{conv_emoji} Conviction: *{conviction}*\n"
         f"🎯 Unified Score: `{unified_score}`\n"
-        f"📌 Strateji: `{main_strategy}`\n"
-        f"{reg_emoji} Piyasa: `{market_regime}`\n"
+        f"📌 Strategy: `{main_strategy}`\n"
+        f"{reg_emoji} Market: `{market_regime}`\n"
         f"━━━━━━━━━━━━━━━━━━━━\n"
         f"🏷️ Tags: `{tags_str}`\n"
         f"━━━━━━━━━━━━━━━━━━━━\n"
-        f"📈 Trend Hunter Özeti\n"
+        f"📈 Trend Hunter Summary\n"
         f"  Score: `{score}` | RSI: `{rsi:.1f}` | ADX: `{adx:.1f}`\n"
         f"━━━━━━━━━━━━━━━━━━━━\n"
-        f"💰 Fiyat: `{fiyat:.2f} TL`\n"
-        f"🎯 Hedef: `{target_price:.2f} TL`\n"
+        f"💰 Price: `{price:.2f} TL`\n"
+        f"🎯 Target: `{target_price:.2f} TL`\n"
         f"🛑 Stop: `{stop_price:.2f} TL`\n"
-        f"📅 {tarih}"
+        f"📅 {date_str}"
     )
     return _send(text)
 
 
 # ──────────────────────────────────────────────────────────────
-# HTTP Gönderici
+# HTTP Sender
 # ──────────────────────────────────────────────────────────────
 def _send(text: str) -> bool:
-    """Telegram Bot API ile mesaj gönderir."""
+    """Sends a message via the Telegram Bot API."""
     try:
         url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendMessage"
         resp = requests.post(url, json={
@@ -145,8 +145,8 @@ def _send(text: str) -> bool:
         if resp.status_code == 200:
             return True
         else:
-            print(f"⚠️ Telegram API hatası: {resp.status_code} — {resp.text}")
+            print(f"⚠️ Telegram API error: {resp.status_code} — {resp.text}")
             return False
     except Exception as e:
-        print(f"⚠️ Telegram gönderim hatası: {e}")
+        print(f"⚠️ Telegram send error: {e}")
         return False

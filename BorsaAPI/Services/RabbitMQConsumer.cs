@@ -1,6 +1,7 @@
 
 using BorsaAPI.Hubs;
 using BorsaAPI.Models;
+using BorsaAPI.Services;
 using Microsoft.AspNetCore.SignalR;
 using RabbitMQ.Client;
 using RabbitMQ.Client.Events;
@@ -31,20 +32,16 @@ namespace BorsaAPI.Services
             var factory = new ConnectionFactory()
             {
                 HostName = _configuration["RabbitMQ:HostName"] ?? "localhost",
-                Port = int.Parse(_configuration["RabbitMQ:Port"] ?? "5672"),
+                Port     = int.Parse(_configuration["RabbitMQ:Port"] ?? "5672"),
                 UserName = _configuration["RabbitMQ:UserName"] ?? "guest",
                 Password = _configuration["RabbitMQ:Password"] ?? "guest"
             };
-            
+
             try
             {
                 _connection = factory.CreateConnection();
                 _channel = _connection.CreateModel();
-                _channel.QueueDeclare(queue: QueueName,
-                                     durable: false,
-                                     exclusive: false,
-                                     autoDelete: false,
-                                     arguments: null);
+                _channel.QueueDeclare(queue: QueueName, durable: false, exclusive: false, autoDelete: false, arguments: null);
                 _logger.LogInformation("Connected to RabbitMQ.");
             }
             catch (Exception ex)
@@ -55,37 +52,33 @@ namespace BorsaAPI.Services
 
         protected override Task ExecuteAsync(CancellationToken stoppingToken)
         {
-             if (_channel == null) return Task.CompletedTask;
+            if (_channel == null) return Task.CompletedTask;
 
             var consumer = new EventingBasicConsumer(_channel);
             consumer.Received += async (model, ea) =>
             {
-                var body = ea.Body.ToArray();
+                var body    = ea.Body.ToArray();
                 var message = Encoding.UTF8.GetString(body);
-                
-                try 
+
+                try
                 {
-                    var hisse = JsonSerializer.Deserialize<Hisse>(message);
-                    if (hisse != null)
+                    var stock = JsonSerializer.Deserialize<Stock>(message);
+                    if (stock != null)
                     {
-                        using (var scope = _serviceProvider.CreateScope())
-                        {
-                            var repository = scope.ServiceProvider.GetRequiredService<IHisseRepository>();
-                            var hubContext = scope.ServiceProvider.GetRequiredService<IHubContext<BorsaHub>>();
+                        using var scope = _serviceProvider.CreateScope();
+                        var repository  = scope.ServiceProvider.GetRequiredService<IStockRepository>();
+                        var hubContext  = scope.ServiceProvider.GetRequiredService<IHubContext<BorsaHub>>();
 
-                            // 1. Save to DB (upsert)
-                            repository.Kaydet(hisse);
+                        // 1. Upsert to DB
+                        repository.Save(stock);
 
-                            // 2. Save to Signal History (only actionable signals)
-                            var trackSignals = new[] { "BUY", "STRONG_BUY", "WATCH" };
-                            if (trackSignals.Contains(hisse.Signal))
-                            {
-                                repository.KaydetSignalHistory(hisse);
-                            }
+                        // 2. Record signal history for actionable signals
+                        var trackSignals = new[] { "BUY", "STRONG_BUY", "WATCH" };
+                        if (trackSignals.Contains(stock.Signal))
+                            repository.SaveSignalHistory(stock);
 
-                            // 3. Real-time Broadcast
-                            await hubContext.Clients.All.SendAsync("ReceiveStockUpdate", hisse);
-                        }
+                        // 3. Real-time broadcast via SignalR
+                        await hubContext.Clients.All.SendAsync("ReceiveStockUpdate", stock);
                     }
                 }
                 catch (Exception ex)
@@ -94,10 +87,7 @@ namespace BorsaAPI.Services
                 }
             };
 
-            _channel.BasicConsume(queue: QueueName,
-                                 autoAck: true,
-                                 consumer: consumer);
-
+            _channel.BasicConsume(queue: QueueName, autoAck: true, consumer: consumer);
             return Task.CompletedTask;
         }
 
